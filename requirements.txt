@@ -1,0 +1,15 @@
+pandas
+numpy
+scikit-learn
+tensorflow
+matplotlib
+seaborn
+nltk
+feedparser
+joblib
+flask
+gunicorn
+requests
+python-dotenv
+lime
+shap

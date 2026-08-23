@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+data/Fake.csv
+data/True.csv
+.venv/
+venv/
+.env
+history.db
+
+# Ignore large/unnecessary models
+models/*.joblib
+models/textcnn.keras
+
+# Keep the model required for deployment
+!models/bilstm.keras
+!models/tokenizer.pkl

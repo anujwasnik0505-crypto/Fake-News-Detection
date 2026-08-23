@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriQuest — Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="container nav">
+        <div class="brand">
+            <div class="brand-logo">V</div>
+            <div>
+                <h1>VeriQuest</h1>
+                <p>AI-Powered News Verification</p>
+            </div>
+        </div>
+
+        <div class="status-pill">
+            <span class="status-dot"></span>
+            AI Verification Active
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-badge">5-LAYER FAKE NEWS DETECTION</div>
+        <h2>Verify before you believe.</h2>
+        <p>
+            Analyze news headlines using trusted sources,
+            fact-checking databases, AI reasoning and
+            machine learning.
+        </p>
+    </section>
+
+    <!-- VERIFY CARD -->
+    <section class="card verify-card">
+
+        <div class="section-heading">
+            <div>
+                <div class="title-row">
+                    <div class="section-icon">✓</div>
+                    <div>
+                        <h3>Check a News Headline</h3>
+                        <p>Enter a headline below to verify its credibility.</p>
+                    </div>
+                </div>
+            </div>
+
+            <span class="layer-badge">5 LAYERS</span>
+        </div>
+
+        <form id="verifyForm">
+            <div class="textarea-wrapper">
+                <textarea
+                    id="headlineInput"
+                    name="headline"
+                    rows="5"
+                    maxlength="1000"
+                    placeholder="Paste or type a news headline here..."
+                ></textarea>
+
+                <div class="textarea-footer">
+                    <span id="charCount">0 / 1000</span>
+
+                    <button type="button" id="clearBtn" class="clear-btn">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" id="verifyBtn" class="primary-btn">
+                <span id="verifyBtnText">Verify Headline</span>
+                <span id="verifySpinner" class="spinner hidden"></span>
+            </button>
+        </form>
+
+        <!-- LOADING -->
+        <div id="verifyLoading" class="loading-box hidden">
+            <div class="loading-spinner"></div>
+
+            <div>
+                <strong>Analyzing headline...</strong>
+                <p>
+                    Checking trusted sources, fact checks,
+                    plausibility, AI reasoning and ML prediction.
+                </p>
+            </div>
+        </div>
+
+        <!-- RESULT -->
+        <div id="resultBox" class="result-box hidden">
+
+            <div class="result-header">
+                <div>
+                    <span class="result-label">VERDICT</span>
+                    <h3 id="verdictText">—</h3>
+                </div>
+
+                <div id="verdictIcon" class="verdict-icon">?</div>
+            </div>
+
+            <div class="result-body">
+
+                <div class="result-row">
+                    <span>Headline</span>
+                    <strong id="resultHeadline">—</strong>
+                </div>
+
+                <div class="result-row">
+                    <span>Detection Mode</span>
+                    <strong id="resultMode">—</strong>
+                </div>
+
+                <div class="result-row" id="confidenceRow">
+                    <span>Confidence</span>
+                    <strong id="resultConfidence">—</strong>
+                </div>
+
+                <div class="result-row" id="publisherRow">
+                    <span>Fact Checker</span>
+                    <strong id="resultPublisher">—</strong>
+                </div>
+
+                <div id="ratingRow" class="result-row">
+                    <span>Rating</span>
+                    <strong id="resultRating">—</strong>
+                </div>
+
+                <div id="reasonBox" class="reason-box hidden">
+                    <strong>Why?</strong>
+                    <p id="resultReason"></p>
+                </div>
+
+                <div id="sourcesBox" class="sources-box hidden">
+                    <strong>Verified Sources</strong>
+                    <ul id="sourcesList"></ul>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- EXPLAINABLE AI -->
+    <section class="card explain-card">
+
+        <div class="section-heading">
+            <div class="title-row">
+                <div class="section-icon explain-icon">AI</div>
+
+                <div>
+                    <h3>Explainable AI</h3>
+                    <p>
+                        See which words influenced the model's prediction.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="explain-controls">
+
+            <select id="explainMethod">
+                <option value="lime">LIME</option>
+                <option value="shap">SHAP</option>
+            </select>
+
+            <button
+                type="button"
+                id="explainBtn"
+                class="secondary-btn"
+            >
+                Explain Prediction
+            </button>
+
+        </div>
+
+        <div id="explainLoading" class="loading-box hidden">
+            <div class="loading-spinner"></div>
+            <div>Generating explanation...</div>
+        </div>
+
+        <div id="explainError" class="error-box hidden"></div>
+
+        <div id="explainResult" class="explain-result hidden">
+
+            <div class="explain-summary">
+                <strong>Word Importance</strong>
+
+                <p>
+                    Positive values push the model toward
+                    REAL. Negative values push it toward FAKE.
+                </p>
+            </div>
+
+            <div id="wordImportance" class="word-importance"></div>
+
+        </div>
+
+        <div class="explain-note">
+            <strong>How it works:</strong>
+            LIME or SHAP analyzes the model's prediction
+            and estimates the contribution of individual
+            words in the headline.
+        </div>
+
+    </section>
+
+    <!-- 5-LAYER VERIFICATION SYSTEM -->
+    <section class="card layers-card">
+
+        <div class="section-heading">
+
+            <div class="title-row">
+                <div class="section-icon layers-icon">5</div>
+
+                <div>
+                    <h3>5-Layer Verification System</h3>
+                    <p>
+                        Every headline passes through five verification layers.
+                    </p>
+                </div>
+            </div>
+
+            <span class="layer-badge">
+                VERIFICATION PIPELINE
+            </span>
+
+        </div>
+
+        <div class="verification-layers">
+
+            <!-- LAYER 1 -->
+            <div class="layer-box">
+                <div class="layer-number">01</div>
+                <div class="layer-icon">✓</div>
+
+                <h4>Trusted Source</h4>
+
+                <p>
+                    Checks the headline against trusted
+                    news sources.
+                </p>
+            </div>
+
+            <!-- LAYER 2 -->
+            <div class="layer-box">
+                <div class="layer-number">02</div>
+                <div class="layer-icon">✓</div>
+
+                <h4>Fact Check</h4>
+
+                <p>
+                    Searches fact-checking databases for
+                    existing reviews.
+                </p>
+            </div>
+
+            <!-- LAYER 3 -->
+            <div class="layer-box">
+                <div class="layer-number">03</div>
+                <div class="layer-icon">✓</div>
+
+                <h4>Plausibility</h4>
+
+                <p>
+                    Detects suspicious patterns and
+                    misleading claims.
+                </p>
+            </div>
+
+            <!-- LAYER 4 -->
+            <div class="layer-box">
+                <div class="layer-number">04</div>
+                <div class="layer-icon">AI</div>
+
+                <h4>AI Reasoning</h4>
+
+                <p>
+                    Uses AI reasoning to evaluate the
+                    credibility of the claim.
+                </p>
+            </div>
+
+            <!-- LAYER 5 -->
+            <div class="layer-box">
+                <div class="layer-number">05</div>
+                <div class="layer-icon">ML</div>
+
+                <h4>ML Prediction</h4>
+
+                <p>
+                    Machine learning model gives the
+                    final prediction.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="stats-grid">
+
+        <div class="dashboard-card">
+            <span>Total Checks</span>
+            <strong id="statTotal">0</strong>
+        </div>
+
+        <div class="dashboard-card">
+            <span>Real</span>
+            <strong id="statReal" class="real-text">0</strong>
+        </div>
+
+        <div class="dashboard-card">
+            <span>Fake</span>
+            <strong id="statFake" class="fake-text">0</strong>
+        </div>
+
+    </section>
+
+    <!-- LIVE FEED -->
+    <section class="card">
+
+        <div class="section-heading">
+
+            <div>
+                <h3>Live News Feed</h3>
+                <p>
+                    Latest headlines classified by the ML model.
+                </p>
+            </div>
+
+            <button
+                id="refreshFeedBtn"
+                class="refresh-btn"
+                type="button"
+            >
+                Refresh
+            </button>
+
+        </div>
+
+        <div id="liveFeed">
+            <div class="feed-empty">
+                Loading live headlines...
+            </div>
+        </div>
+
+    </section>
+
+    <!-- HISTORY -->
+    <section class="card">
+
+        <div class="section-heading">
+
+            <div>
+                <h3>Recent Checks</h3>
+                <p>
+                    Your recent verification history.
+                </p>
+            </div>
+
+        </div>
+
+        <div id="historyList">
+            <div class="history-empty">
+                Loading history...
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- CHATBOT -->
+<div id="chatbot" class="chatbot">
+
+    <div id="chatWindow" class="chat-window hidden">
+
+        <div class="chat-header">
+
+            <div>
+                <strong>VeriQuest AI</strong>
+
+                <span>
+                    Ask me about your result
+                </span>
+            </div>
+
+            <button
+                type="button"
+                id="chatClose"
+                aria-label="Close chatbot"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div id="chatMessages" class="chat-messages">
+
+            <div class="chat-message bot">
+                Hi! 👋 I'm VeriQuest AI.
+                Ask me about a headline,
+                its verdict, Explainable AI,
+                or how the verification system works.
+            </div>
+
+        </div>
+
+        <form id="chatForm" class="chat-form">
+
+            <input
+                id="chatInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Ask something..."
+            >
+
+            <button type="submit">
+                Send
+            </button>
+
+        </form>
+
+    </div>
+
+    <button
+        type="button"
+        id="chatToggle"
+        class="chat-toggle"
+        aria-label="Open chatbot"
+    >
+        💬
+    </button>
+
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+
+    <div class="container">
+
+        <strong>VeriQuest</strong>
+
+        <span>
+            AI-powered misinformation detection
+        </span>
+
+    </div>
+
+</footer>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
