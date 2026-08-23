@@ -11,6 +11,8 @@ history.db
 models/*.joblib
 models/textcnn.keras
 
-# Keep the model required for deployment
+# Keep the models required for deployment
 !models/bilstm.keras
 !models/tokenizer.pkl
+!models/logistic_regression.joblib
+!models/tfidf_vectorizer.joblib
