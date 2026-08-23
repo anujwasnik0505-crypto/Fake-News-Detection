@@ -25,7 +25,7 @@ except ImportError:
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 PROMPT_TEMPLATE = """You are a fact-plausibility checker. Given a news headline, judge only
