@@ -1,16 +1,17 @@
 """
-VeriQuest Conversational AI Assistant
+VeriQuest AI Chatbot
 
 Features:
-- Natural ChatGPT-style conversation
-- Hindi / Hinglish / English support
+- ChatGPT-style conversational responses
+- Real-time Google Search grounding
+- Current news and breaking-news support
+- Hindi / Hinglish / English
 - Conversation history
-- Verification-result context
-- Gemini as primary AI
-- Claude as optional fallback
-- Local .env support
-- Render environment-variable support
-- Better error handling
+- VeriQuest verification context
+- Source extraction
+- Gemini primary
+- Claude fallback
+- Render environment variables
 """
 
 import os
@@ -36,14 +37,14 @@ BASE_DIR = os.path.abspath(
 try:
     from dotenv import load_dotenv
 
-    ENV_FILE = os.path.join(
+    env_file = os.path.join(
         BASE_DIR,
         ".env"
     )
 
-    if os.path.exists(ENV_FILE):
+    if os.path.exists(env_file):
         load_dotenv(
-            ENV_FILE,
+            env_file,
             override=False
         )
 
@@ -67,7 +68,7 @@ ANTHROPIC_API_KEY = os.getenv(
 
 
 # ============================================================
-# GEMINI API
+# GEMINI
 # ============================================================
 
 GEMINI_MODEL = "gemini-3.6-flash"
@@ -80,7 +81,7 @@ GEMINI_URL = (
 
 
 # ============================================================
-# CLAUDE API
+# CLAUDE FALLBACK
 # ============================================================
 
 ANTHROPIC_URL = (
@@ -95,304 +96,388 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 # ============================================================
 
 SYSTEM_PROMPT = """
-You are VeriQuest, the AI assistant inside a modern
-fake-news detection and news verification application.
+You are VeriQuest AI, the intelligent conversational assistant
+inside a professional Fake News Detection and News Verification
+application.
 
-Your job is to behave like a highly capable, friendly,
-natural conversational AI assistant.
+Your goal is to behave like a highly capable ChatGPT-style
+assistant while being especially good at NEWS, FACT-CHECKING,
+CURRENT EVENTS and EXPLAINING VERIQUEST RESULTS.
 
 ============================================================
-CORE PERSONALITY
+1. PERSONALITY
 ============================================================
 
 Be:
 
-- Friendly
 - Intelligent
-- Clear
-- Helpful
-- Patient
+- Friendly
 - Natural
+- Helpful
+- Clear
 - Professional
 - Conversational
+- Honest about uncertainty
 
-Do NOT sound robotic.
+Do not sound robotic.
 
-Do NOT repeat the same sentence structure again and again.
-
-Do NOT unnecessarily mention that you are an AI.
-
-Do NOT start every answer with phrases such as:
+Do not repeatedly say:
 "Certainly!"
 "Of course!"
 "Sure!"
-unless they genuinely fit the conversation.
 
-Answer naturally, like a good human assistant.
+Just answer naturally.
+
+Do not unnecessarily mention that you are an AI.
 
 ============================================================
-LANGUAGE
+2. LANGUAGE
 ============================================================
 
-Automatically understand the user's language.
+Match the user's language.
 
-If the user writes in:
+English -> English.
 
-- English -> answer in English.
-- Hindi -> answer in Hindi.
-- Hinglish -> answer naturally in Hinglish.
-- Marathi -> answer in Marathi when possible.
-- Mixed language -> naturally match the user's style.
+Hindi -> Hindi.
 
-Do not force the user to choose a language.
+Hinglish -> Hinglish.
+
+Marathi -> Marathi when possible.
+
+Mixed language -> naturally use the same style.
 
 Example:
 
 User:
-"bhai ye fake news kaise check hoti hai?"
+"bhai ye news fake kyu aa rahi hai?"
 
-Good response:
-"Basically, VeriQuest ek hi method par depend nahi karta. Ye
-trusted sources, fact-checking, rule-based checks, AI analysis
-aur ML prediction ko combine karta hai."
+Answer naturally in Hinglish.
 
 ============================================================
-CONVERSATION
+3. CURRENT NEWS
 ============================================================
 
-Treat the conversation as an ongoing conversation.
+You have access to web search when the application enables
+Google Search grounding.
 
-Remember relevant information from previous messages
-provided in the conversation history.
+For questions involving:
 
-If the user asks:
+- latest news
+- today's news
+- breaking news
+- recent incidents
+- current events
+- politics
+- sports
+- crime
+- deaths
+- accidents
+- court cases
+- government announcements
+- recent technology news
+- recent company news
+- "what happened?"
+- "is this news true?"
+- "tell me details about this headline"
 
-"why?"
+USE WEB SEARCH.
 
-"how?"
+Do not rely only on your stored knowledge for recent events.
 
-"what about this?"
+When search results are available:
 
-"and this one?"
+- Identify the relevant facts.
+- Cross-check multiple credible sources when possible.
+- Prefer primary/official sources.
+- Prefer established news organizations.
+- Give dates.
+- Give locations.
+- Give names only when reliably supported.
+- Clearly separate confirmed facts from claims.
+- Mention disagreements between sources when relevant.
 
-understand what they are referring to from previous messages.
-
-Do not ask the user to repeat information that is already
-available in the conversation history.
-
-============================================================
-RESPONSE LENGTH
-============================================================
-
-Match the response length to the question.
-
-For simple questions:
-- 1-4 sentences.
-
-For normal questions:
-- A short explanation.
-- Use bullets when useful.
-
-For detailed questions:
-- Give a structured, detailed answer.
-
-For technical questions:
-- Explain step-by-step.
-- Include code when necessary.
-- Explain what the code does.
-
-Never make every answer unnecessarily long.
+Never invent news details.
 
 ============================================================
-FORMATTING
+4. NEWS ANSWER FORMAT
 ============================================================
 
-Use Markdown when useful.
+When the user asks for details about a news story, provide
+a useful structured answer.
 
-Use:
+Prefer:
 
-- Headings
-- Bullet points
-- Numbered steps
-- Code blocks
-- Short paragraphs
+### What happened
+Short summary.
 
-Avoid giant walls of text.
+### Key details
+- What happened
+- Where
+- When
+- Who was involved
+- What authorities/news organizations reported
 
-When explaining a technical problem, prefer:
+### What is confirmed
+Clearly state confirmed information.
 
-1. Problem
-2. Why it happens
-3. Fix
-4. How to test
+### What is not confirmed
+Mention rumors, conflicting reports or missing information.
+
+### Sources
+Mention the important sources used by the search/verification
+system.
+
+Do NOT use this structure for every casual question.
+Use it when useful.
 
 ============================================================
-FAKE NEWS VERIFICATION
+5. SOURCE QUALITY
 ============================================================
 
-You are part of a fake-news verification application.
+For news, prioritize:
 
-The application can provide verification context containing:
+1. Official government sources
+2. Police / court / institutional statements
+3. Original reporting
+4. Established news organizations
+5. Fact-check organizations
 
-- Headline
-- Verdict
-- Verification mode
-- Confidence
-- Reason
-- Trusted sources
-- Fact-check publisher
-- Fact-check rating
-- Warnings
+Do not treat social media posts as automatically true.
 
-Use this context when it is relevant.
+If only social media information exists, clearly say that
+the information has not been independently confirmed.
+
+============================================================
+6. VERIQUEST RESULT
+============================================================
+
+The application may provide verification context.
+
+It can contain:
+
+- headline
+- verdict
+- mode
+- confidence
+- reason
+- sources
+- publisher
+- rating
+- warnings
+- model_used
+
+Use this information.
 
 IMPORTANT:
 
-Never invent:
-- News sources
-- URLs
-- Fact-check results
-- Publishers
-- Verification results
-- Confidence scores
-- Evidence
+An ML prediction is NOT the same thing as proof.
 
-If verification context says something is verified by
-trusted sources, explain that clearly.
+If:
 
-If the result is based only on an ML prediction, make it clear
-that it is a model prediction and not absolute proof.
+verdict = REAL
 
-If the result is UNVERIFIED, explain that the system could not
-establish enough evidence.
+but the result came only from an ML model, explain that it is
+a model prediction and not absolute proof.
 
-============================================================
-IMPORTANT VERDICT RULE
-============================================================
+If:
 
-REAL does not automatically mean absolute truth.
+verdict = FAKE
 
-FAKE should not be claimed as an absolute fact unless there
-is supporting verification or fact-check evidence.
+but the result came only from an ML model, do NOT claim that
+the real-world event definitely never happened.
 
-ML predictions can be wrong.
+If:
 
-Explain uncertainty honestly.
+mode = verified
 
-============================================================
-VERIQUEST PIPELINE
-============================================================
+then explain that trusted-source matching was found.
 
-The website may use multiple layers:
+If:
 
-1. Trusted-source verification
-2. Fact-check databases
-3. Rule-based plausibility checks
-4. LLM-based analysis
-5. Machine-learning prediction
+mode = fact_checked
 
-Explain this simply when the user asks how the system works.
+explain the fact-check publisher and rating.
 
-Do not dump the entire pipeline when the user simply says
-"hello".
+If:
+
+mode = unverified
+
+say that the system does not have enough direct evidence.
 
 ============================================================
-NORMAL CONVERSATION
+7. FALSE POSITIVE AWARENESS
 ============================================================
+
+A headline can be real even if:
+
+- it sounds sensational
+- it contains emotional wording
+- it is unusual
+- it is about suicide
+- it is about crime
+- it is shocking
+- it is difficult to believe
+
+Do not call something fake simply because it sounds unusual.
+
+Evidence is more important than writing style.
+
+============================================================
+8. CONVERSATION MEMORY
+============================================================
+
+Use the conversation history provided by the application.
 
 If the user says:
 
-"hi"
-"hello"
-"hey"
-"heyy"
-"good morning"
-"good evening"
-"what's up"
+"what about the parents?"
 
-respond naturally and briefly.
+understand that they are referring to the previous news story.
 
-Example:
+If the user says:
 
-"Hey! 👋 What can I help you with?"
+"why fake?"
+
+understand that they are referring to the previous
+verification result.
+
+Do not repeatedly ask the user to repeat context that already
+exists in the conversation.
+
+============================================================
+9. DETAILED NEWS QUESTIONS
+============================================================
 
 If the user asks:
-"how are you?"
 
-respond naturally.
+"tell me everything about this news"
 
-If the user thanks you:
+provide:
 
-"You're welcome! 😊"
+- summary
+- date
+- location
+- people involved
+- sequence of events
+- official statements
+- current status
+- verification status
+- source quality
+- important uncertainty
 
-Do not turn casual conversation into a lecture about
-fake-news detection.
+Do not make up missing details.
 
-============================================================
-TECHNICAL HELP
-============================================================
+If a detail cannot be confirmed, explicitly say:
 
-If the user asks about their application:
-
-- Give practical instructions.
-- Explain exactly what file to edit.
-- Give exact commands when appropriate.
-- Warn before destructive commands.
-- Never recommend exposing API keys.
-- Never tell users to commit secrets to GitHub.
-
-When giving commands, make them copy-paste friendly.
+"That detail could not be independently confirmed."
 
 ============================================================
-NEWS QUESTIONS
+10. FAKE NEWS QUESTIONS
 ============================================================
 
-If the user asks about current or breaking news and no
-verification context is supplied, do not pretend that you
-have independently verified it.
+If user asks:
 
-Say that the headline should be checked against reliable
-sources.
+"Is this fake?"
 
-If verification context is supplied, use that context.
+Do not answer based only on intuition.
 
-============================================================
-SAFETY
-============================================================
+Use:
 
-For sensitive topics such as suicide, violence, crime,
-self-harm, or death:
+- verification context
+- fact-check results
+- web search
+- trusted sources
+- official statements
+- ML result
 
-- Be respectful.
-- Do not sensationalize.
-- Do not provide harmful instructions.
-- If the user is asking about a news report, focus on
-  factual explanation and verification.
+Then explain WHY.
 
 ============================================================
-FINAL RULE
+11. CHATGPT-STYLE RESPONSES
 ============================================================
 
-Your goal is not simply to answer questions.
+For simple questions:
 
-Your goal is to make the user feel that they are talking
-to a helpful, intelligent, context-aware assistant.
+Give a short answer.
 
-Be concise when possible.
+For complex questions:
 
-Be detailed when needed.
+Give a detailed answer.
 
-Always prioritize correctness and honesty.
+For technical questions:
+
+Explain step-by-step.
+
+For news:
+
+Give useful factual detail.
+
+Do not give huge irrelevant lectures.
+
+============================================================
+12. SAFETY
+============================================================
+
+For suicide, self-harm, crime, death or violence news:
+
+Be factual and respectful.
+
+Do not sensationalize.
+
+Do not provide harmful instructions.
+
+When discussing a suicide-related news report, focus on
+confirmed reporting and verification.
+
+============================================================
+13. NO HALLUCINATION
+============================================================
+
+Never invent:
+
+- names
+- dates
+- locations
+- quotes
+- police statements
+- victim details
+- suspect details
+- statistics
+- URLs
+- sources
+
+If information is unavailable, say so.
+
+============================================================
+14. FINAL GOAL
+============================================================
+
+You are not merely a chatbot.
+
+You are the user's:
+
+- news research assistant
+- fact-checking assistant
+- VeriQuest explainer
+- conversational assistant
+
+Give useful answers with evidence.
+
+Be natural.
+
+Be accurate.
+
+Be transparent about uncertainty.
 """
 
 
 # ============================================================
-# STARTUP STATUS
+# STARTUP
 # ============================================================
 
 print()
 print("==============================================")
-print("        VERIQUEST CHATBOT INITIALIZATION")
+print("       VERIQUEST AI INITIALIZATION")
 print("==============================================")
 
 print(
@@ -410,6 +495,8 @@ print(
     GEMINI_MODEL
 )
 
+print("Google Search grounding: ENABLED")
+
 print("==============================================")
 print()
 
@@ -419,120 +506,73 @@ print()
 # ============================================================
 
 def _context_to_text(context):
-    """
-    Convert verification context into readable text.
-    """
 
     if not context:
         return ""
 
-    if isinstance(context, str):
+    if isinstance(
+        context,
+        str
+    ):
         return context
 
-    if not isinstance(context, dict):
+    if not isinstance(
+        context,
+        dict
+    ):
         return str(context)
 
     parts = []
 
-    headline = context.get("headline")
-    verdict = context.get("verdict")
-    mode = context.get("mode")
-    confidence = context.get("confidence")
-    reason = context.get("reason")
-    publisher = context.get("publisher")
-    rating = context.get("rating")
-    sources = context.get("sources")
-    model_used = context.get("model_used")
-    warnings = context.get("warnings")
+    fields = [
+        ("Headline", "headline"),
+        ("Verdict", "verdict"),
+        ("Verification mode", "mode"),
+        ("Confidence", "confidence"),
+        ("Reason", "reason"),
+        ("Publisher", "publisher"),
+        ("Rating", "rating"),
+        ("Model used", "model_used"),
+        ("Sources", "sources"),
+        ("Warnings", "warnings")
+    ]
 
-    if headline:
-        parts.append(
-            f"Headline: {headline}"
-        )
+    for label, key in fields:
 
-    if verdict:
-        parts.append(
-            f"Verdict: {verdict}"
-        )
+        value = context.get(key)
 
-    if mode:
-        parts.append(
-            f"Verification mode: {mode}"
-        )
+        if value is None:
+            continue
 
-    if confidence is not None:
-        parts.append(
-            f"Model confidence: {confidence}"
-        )
+        if value == "":
+            continue
 
-    if model_used:
-        parts.append(
-            f"Model used: {model_used}"
-        )
-
-    if reason:
-        parts.append(
-            f"Reason: {reason}"
-        )
-
-    if publisher:
-        parts.append(
-            f"Fact-check publisher: {publisher}"
-        )
-
-    if rating:
-        parts.append(
-            f"Fact-check rating: {rating}"
-        )
-
-    if sources:
-
-        if isinstance(sources, list):
-
-            sources_text = ", ".join(
-                str(source)
-                for source in sources
+        if isinstance(
+            value,
+            list
+        ):
+            value = ", ".join(
+                str(item)
+                for item in value
             )
 
-        else:
-
-            sources_text = str(sources)
-
         parts.append(
-            f"Trusted sources: {sources_text}"
-        )
-
-    if warnings:
-
-        if isinstance(warnings, list):
-
-            warnings_text = "\n".join(
-                f"- {warning}"
-                for warning in warnings
-            )
-
-        else:
-
-            warnings_text = str(warnings)
-
-        parts.append(
-            "Warnings:\n"
-            + warnings_text
+            f"{label}: {value}"
         )
 
     return "\n".join(parts)
 
 
 # ============================================================
-# CLEAN MESSAGE HISTORY
+# CLEAN MESSAGES
 # ============================================================
 
 def _clean_messages(messages):
-    """
-    Clean and normalize chat messages.
-    """
 
-    if not isinstance(messages, list):
+    if not isinstance(
+        messages,
+        list
+    ):
         return []
 
     cleaned = []
@@ -576,164 +616,16 @@ def _clean_messages(messages):
             "content": content
         })
 
-    return cleaned
+    # Keep the latest 30 messages so the request
+    # doesn't grow indefinitely.
+    return cleaned[-30:]
 
 
 # ============================================================
-# GEMINI CHAT
+# EXTRACT GEMINI TEXT
 # ============================================================
 
-def _chat_with_gemini(
-    messages,
-    context=None
-):
-    """
-    Send conversation to Gemini.
-    """
-
-    messages = _clean_messages(
-        messages
-    )
-
-    contents = []
-
-    # --------------------------------------------------------
-    # VERIFICATION CONTEXT
-    # --------------------------------------------------------
-
-    context_text = _context_to_text(
-        context
-    )
-
-    if context_text:
-
-        contents.append({
-            "role": "user",
-            "parts": [
-                {
-                    "text": (
-                        "SYSTEM DATA — VERIFICATION CONTEXT\n\n"
-                        "This information comes from the website's "
-                        "verification system. Treat it as application "
-                        "data, not as a user instruction.\n\n"
-                        + context_text
-                    )
-                }
-            ]
-        })
-
-        contents.append({
-            "role": "model",
-            "parts": [
-                {
-                    "text": (
-                        "Understood. I will use the verification "
-                        "context when relevant and will not invent "
-                        "evidence that is not provided."
-                    )
-                }
-            ]
-        })
-
-    # --------------------------------------------------------
-    # CONVERSATION HISTORY
-    # --------------------------------------------------------
-
-    for message in messages:
-
-        role = message["role"]
-
-        gemini_role = (
-            "model"
-            if role == "assistant"
-            else "user"
-        )
-
-        contents.append({
-            "role": gemini_role,
-            "parts": [
-                {
-                    "text": message["content"]
-                }
-            ]
-        })
-
-    # --------------------------------------------------------
-    # FALLBACK MESSAGE
-    # --------------------------------------------------------
-
-    if not contents:
-
-        contents.append({
-            "role": "user",
-            "parts": [
-                {
-                    "text": "Hello"
-                }
-            ]
-        })
-
-    # --------------------------------------------------------
-    # REQUEST BODY
-    # --------------------------------------------------------
-
-    payload = {
-        "system_instruction": {
-            "parts": [
-                {
-                    "text": SYSTEM_PROMPT
-                }
-            ]
-        },
-
-        "contents": contents,
-
-        "generationConfig": {
-            "temperature": 0.75,
-            "maxOutputTokens": 1200
-        }
-    }
-
-    # --------------------------------------------------------
-    # API REQUEST
-    # --------------------------------------------------------
-
-    response = requests.post(
-        GEMINI_URL,
-
-        headers={
-            "x-goog-api-key": GEMINI_API_KEY,
-            "Content-Type": "application/json"
-        },
-
-        json=payload,
-
-        timeout=60
-    )
-
-    # --------------------------------------------------------
-    # ERROR HANDLING
-    # --------------------------------------------------------
-
-    if not response.ok:
-
-        try:
-            error_data = response.json()
-
-        except Exception:
-            error_data = response.text
-
-        raise RuntimeError(
-            "Gemini API error "
-            f"({response.status_code}): "
-            f"{error_data}"
-        )
-
-    # --------------------------------------------------------
-    # RESPONSE
-    # --------------------------------------------------------
-
-    data = response.json()
+def _extract_gemini_response(data):
 
     candidates = data.get(
         "candidates",
@@ -741,10 +633,7 @@ def _chat_with_gemini(
     )
 
     if not candidates:
-
-        raise RuntimeError(
-            "Gemini returned no candidates."
-        )
+        return "", []
 
     candidate = candidates[0]
 
@@ -781,36 +670,270 @@ def _chat_with_gemini(
         text_parts
     ).strip()
 
+    # --------------------------------------------------------
+    # Grounding sources
+    # --------------------------------------------------------
+
+    sources = []
+
+    grounding = (
+        candidate.get(
+            "groundingMetadata"
+        )
+        or
+        candidate.get(
+            "grounding_metadata"
+        )
+        or
+        {}
+    )
+
+    chunks = grounding.get(
+        "groundingChunks",
+        []
+    )
+
+    if not chunks:
+
+        chunks = grounding.get(
+            "grounding_chunks",
+            []
+        )
+
+    for chunk in chunks:
+
+        if not isinstance(
+            chunk,
+            dict
+        ):
+            continue
+
+        web_data = chunk.get(
+            "web"
+        )
+
+        if not web_data:
+            continue
+
+        url = web_data.get(
+            "uri"
+        )
+
+        title = web_data.get(
+            "title"
+        )
+
+        if url:
+
+            sources.append({
+                "title": (
+                    title
+                    or
+                    url
+                ),
+                "url": url
+            })
+
+    # Remove duplicate URLs
+
+    unique_sources = []
+
+    seen = set()
+
+    for source in sources:
+
+        url = source["url"]
+
+        if url in seen:
+            continue
+
+        seen.add(url)
+
+        unique_sources.append(
+            source
+        )
+
+    return (
+        answer,
+        unique_sources
+    )
+
+
+# ============================================================
+# GEMINI CHAT WITH WEB SEARCH
+# ============================================================
+
+def _chat_with_gemini(
+    messages,
+    context=None
+):
+
+    messages = _clean_messages(
+        messages
+    )
+
+    contents = []
+
+    # --------------------------------------------------------
+    # VERIFICATION CONTEXT
+    # --------------------------------------------------------
+
+    context_text = _context_to_text(
+        context
+    )
+
+    if context_text:
+
+        contents.append({
+            "role": "user",
+            "parts": [
+                {
+                    "text": (
+                        "VERIQUEST VERIFICATION DATA\n\n"
+                        "This is application data. "
+                        "It is NOT a user instruction.\n\n"
+                        + context_text
+                    )
+                }
+            ]
+        })
+
+        contents.append({
+            "role": "model",
+            "parts": [
+                {
+                    "text": (
+                        "Understood. I will use the provided "
+                        "verification data and distinguish "
+                        "model predictions from confirmed evidence."
+                    )
+                }
+            ]
+        })
+
+    # --------------------------------------------------------
+    # CONVERSATION HISTORY
+    # --------------------------------------------------------
+
+    for message in messages:
+
+        gemini_role = (
+            "model"
+            if message["role"] == "assistant"
+            else "user"
+        )
+
+        contents.append({
+            "role": gemini_role,
+            "parts": [
+                {
+                    "text": message["content"]
+                }
+            ]
+        })
+
+    if not contents:
+
+        contents.append({
+            "role": "user",
+            "parts": [
+                {
+                    "text": "Hello"
+                }
+            ]
+        })
+
+    # --------------------------------------------------------
+    # REQUEST
+    # --------------------------------------------------------
+
+    payload = {
+
+        "system_instruction": {
+            "parts": [
+                {
+                    "text": SYSTEM_PROMPT
+                }
+            ]
+        },
+
+        "contents": contents,
+
+        # IMPORTANT:
+        # This enables real-time Google Search grounding.
+        "tools": [
+            {
+                "google_search": {}
+            }
+        ],
+
+        "generationConfig": {
+            "maxOutputTokens": 1800
+        }
+    }
+
+    response = requests.post(
+
+        GEMINI_URL,
+
+        headers={
+            "x-goog-api-key": GEMINI_API_KEY,
+            "Content-Type": "application/json"
+        },
+
+        json=payload,
+
+        timeout=90
+    )
+
+    if not response.ok:
+
+        try:
+            error_data = response.json()
+
+        except Exception:
+            error_data = response.text
+
+        raise RuntimeError(
+            "Gemini API error "
+            f"({response.status_code}): "
+            f"{error_data}"
+        )
+
+    data = response.json()
+
+    answer, sources = (
+        _extract_gemini_response(
+            data
+        )
+    )
+
     if not answer:
 
         raise RuntimeError(
             "Gemini returned an empty response."
         )
 
-    return answer
+    return (
+        answer,
+        sources
+    )
 
 
 # ============================================================
-# CLAUDE CHAT
+# CLAUDE FALLBACK
 # ============================================================
 
 def _chat_with_claude(
     messages,
     context=None
 ):
-    """
-    Claude fallback.
-    """
 
     messages = _clean_messages(
         messages
     )
 
     api_messages = []
-
-    # --------------------------------------------------------
-    # CONTEXT
-    # --------------------------------------------------------
 
     context_text = _context_to_text(
         context
@@ -821,7 +944,7 @@ def _chat_with_claude(
         api_messages.append({
             "role": "user",
             "content": (
-                "VERIFICATION CONTEXT FROM WEBSITE:\n\n"
+                "VERIQUEST VERIFICATION DATA:\n\n"
                 + context_text
             )
         })
@@ -829,14 +952,10 @@ def _chat_with_claude(
         api_messages.append({
             "role": "assistant",
             "content": (
-                "Understood. I will use the verification "
-                "context when relevant."
+                "Understood. I will use the provided "
+                "verification data."
             )
         })
-
-    # --------------------------------------------------------
-    # HISTORY
-    # --------------------------------------------------------
 
     for message in messages:
 
@@ -845,10 +964,6 @@ def _chat_with_claude(
             "content": message["content"]
         })
 
-    # --------------------------------------------------------
-    # FALLBACK
-    # --------------------------------------------------------
-
     if not api_messages:
 
         api_messages.append({
@@ -856,11 +971,8 @@ def _chat_with_claude(
             "content": "Hello"
         })
 
-    # --------------------------------------------------------
-    # REQUEST
-    # --------------------------------------------------------
-
     response = requests.post(
+
         ANTHROPIC_URL,
 
         headers={
@@ -871,17 +983,13 @@ def _chat_with_claude(
 
         json={
             "model": CLAUDE_MODEL,
-            "max_tokens": 1200,
+            "max_tokens": 1800,
             "system": SYSTEM_PROMPT,
             "messages": api_messages
         },
 
-        timeout=60
+        timeout=90
     )
-
-    # --------------------------------------------------------
-    # ERROR
-    # --------------------------------------------------------
 
     if not response.ok:
 
@@ -898,10 +1006,6 @@ def _chat_with_claude(
         )
 
     data = response.json()
-
-    # --------------------------------------------------------
-    # RESPONSE
-    # --------------------------------------------------------
 
     blocks = data.get(
         "content",
@@ -954,54 +1058,37 @@ def chat_reply(
     messages,
     context=None
 ):
-    """
-    Main chatbot function.
-
-    Parameters:
-        messages:
-            [
-                {
-                    "role": "user",
-                    "content": "hello"
-                },
-                {
-                    "role": "assistant",
-                    "content": "Hey! How can I help?"
-                }
-            ]
-
-        context:
-            Optional verification result.
-
-    Returns:
-        {
-            "available": True/False,
-            "reply": "..."
-        }
-    """
 
     messages = _clean_messages(
         messages
     )
 
-    # --------------------------------------------------------
-    # GEMINI PRIMARY
-    # --------------------------------------------------------
+    # ========================================================
+    # GEMINI
+    # ========================================================
 
     if GEMINI_API_KEY:
 
         try:
 
-            answer = _chat_with_gemini(
-                messages,
-                context
+            answer, sources = (
+                _chat_with_gemini(
+                    messages,
+                    context
+                )
             )
 
-            return {
+            result = {
                 "available": True,
                 "reply": answer,
                 "provider": "gemini"
             }
+
+            if sources:
+
+                result["sources"] = sources
+
+            return result
 
         except Exception as error:
 
@@ -1017,9 +1104,9 @@ def chat_reply(
             )
             print()
 
-    # --------------------------------------------------------
+    # ========================================================
     # CLAUDE FALLBACK
-    # --------------------------------------------------------
+    # ========================================================
 
     if ANTHROPIC_API_KEY:
 
@@ -1033,7 +1120,8 @@ def chat_reply(
             return {
                 "available": True,
                 "reply": answer,
-                "provider": "claude"
+                "provider": "claude",
+                "sources": []
             }
 
         except Exception as error:
@@ -1050,17 +1138,9 @@ def chat_reply(
             )
             print()
 
-            return {
-                "available": False,
-                "reply": (
-                    "The AI assistant could not connect "
-                    "to the AI service right now."
-                )
-            }
-
-    # --------------------------------------------------------
+    # ========================================================
     # NO API KEY
-    # --------------------------------------------------------
+    # ========================================================
 
     return {
         "available": False,
@@ -1068,5 +1148,6 @@ def chat_reply(
             "The AI assistant is not configured. "
             "Please add GEMINI_API_KEY to your Render "
             "Environment Variables."
-        )
+        ),
+        "sources": []
     }
