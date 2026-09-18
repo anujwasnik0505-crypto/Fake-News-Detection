@@ -3,61 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>VeriQuest — Fake News Detection</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
 
 <body>
 
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
 <header class="topbar">
     <div class="container nav">
+
         <div class="brand">
             <div class="brand-logo">V</div>
+
             <div>
                 <h1>VeriQuest</h1>
                 <p>AI-Powered News Verification</p>
             </div>
         </div>
 
-        <div class="status-pill">
-            <span class="status-dot"></span>
-            AI Verification Active
+        <div class="top-actions">
+
+            <button
+                type="button"
+                id="verifyNavBtn"
+                class="nav-tab active"
+            >
+                VERIFY
+            </button>
+
+            <button
+                type="button"
+                id="liveFeedToggle"
+                class="nav-tab"
+            >
+                LIVE FEED
+            </button>
+
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                AI Verification Active
+            </div>
+
         </div>
+
     </div>
 </header>
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
 
 <main class="container">
 
     <!-- HERO -->
+
     <section class="hero">
-        <div class="hero-badge">5-LAYER FAKE NEWS DETECTION</div>
-        <h2>Verify before you believe.</h2>
+
+        <div class="hero-badge">
+            5-LAYER FAKE NEWS DETECTION
+        </div>
+
+        <h2>
+            Verify before you believe.
+        </h2>
+
         <p>
             Analyze news headlines using trusted sources,
             fact-checking databases, AI reasoning and
             machine learning.
         </p>
+
     </section>
 
-    <!-- VERIFY CARD -->
+
+    <!-- =====================================================
+         VERIFY CARD
+    ====================================================== -->
+
     <section class="card verify-card">
 
         <div class="section-heading">
-            <div>
-                <div class="title-row">
-                    <div class="section-icon">✓</div>
-                    <div>
-                        <h3>Check a News Headline</h3>
-                        <p>Enter a headline below to verify its credibility.</p>
-                    </div>
+
+            <div class="title-row">
+
+                <div class="section-icon">
+                    ✓
                 </div>
+
+                <div>
+                    <h3>
+                        Check a News Headline
+                    </h3>
+
+                    <p>
+                        Enter a headline below to verify its credibility.
+                    </p>
+                </div>
+
             </div>
 
-            <span class="layer-badge">5 LAYERS</span>
+            <span class="layer-badge">
+                5 LAYERS
+            </span>
+
         </div>
 
+
         <form id="verifyForm">
+
             <div class="textarea-wrapper">
+
                 <textarea
                     id="headlineInput"
                     name="headline"
@@ -67,108 +132,402 @@
                 ></textarea>
 
                 <div class="textarea-footer">
-                    <span id="charCount">0 / 1000</span>
 
-                    <button type="button" id="clearBtn" class="clear-btn">
+                    <span id="charCount">
+                        0 / 1000
+                    </span>
+
+                    <button
+                        type="button"
+                        id="clearBtn"
+                        class="clear-btn"
+                    >
                         Clear
                     </button>
+
                 </div>
+
             </div>
 
-            <button type="submit" id="verifyBtn" class="primary-btn">
-                <span id="verifyBtnText">Verify Headline</span>
-                <span id="verifySpinner" class="spinner hidden"></span>
+
+            <button
+                type="submit"
+                id="verifyBtn"
+                class="primary-btn"
+            >
+
+                <span id="verifyBtnText">
+                    Verify Headline
+                </span>
+
+                <span
+                    id="verifySpinner"
+                    class="spinner hidden"
+                ></span>
+
             </button>
+
         </form>
 
-        <!-- LOADING -->
-        <div id="verifyLoading" class="loading-box hidden">
-            <div class="loading-spinner"></div>
 
-            <div>
-                <strong>Analyzing headline...</strong>
-                <p>
-                    Checking trusted sources, fact checks,
-                    plausibility, AI reasoning and ML prediction.
-                </p>
-            </div>
-        </div>
+        <!-- =================================================
+             5 STEP LOADING ANIMATION
+        ================================================== -->
 
-        <!-- RESULT -->
-        <div id="resultBox" class="result-box hidden">
+        <div
+            id="verifyLoading"
+            class="loading-box verification-loading hidden"
+        >
 
-            <div class="result-header">
+            <div class="verification-loader-head">
+
+                <div class="loading-spinner"></div>
+
                 <div>
-                    <span class="result-label">VERDICT</span>
-                    <h3 id="verdictText">—</h3>
-                </div>
 
-                <div id="verdictIcon" class="verdict-icon">?</div>
-            </div>
+                    <strong id="loadingTitle">
+                        Reading sources...
+                    </strong>
 
-            <div class="result-body">
+                    <p id="loadingSubtitle">
+                        We are checking the live web before generating
+                        the verdict.
+                    </p>
 
-                <div class="result-row">
-                    <span>Headline</span>
-                    <strong id="resultHeadline">—</strong>
-                </div>
-
-                <div class="result-row">
-                    <span>Detection Mode</span>
-                    <strong id="resultMode">—</strong>
-                </div>
-
-                <div class="result-row" id="confidenceRow">
-                    <span>Confidence</span>
-                    <strong id="resultConfidence">—</strong>
-                </div>
-
-                <div class="result-row" id="publisherRow">
-                    <span>Fact Checker</span>
-                    <strong id="resultPublisher">—</strong>
-                </div>
-
-                <div id="ratingRow" class="result-row">
-                    <span>Rating</span>
-                    <strong id="resultRating">—</strong>
-                </div>
-
-                <div id="reasonBox" class="reason-box hidden">
-                    <strong>Why?</strong>
-                    <p id="resultReason"></p>
-                </div>
-
-                <div id="sourcesBox" class="sources-box hidden">
-                    <strong>Verified Sources</strong>
-                    <ul id="sourcesList"></ul>
                 </div>
 
             </div>
+
+
+            <div
+                id="verificationSteps"
+                class="verification-steps"
+            >
+
+                <div
+                    class="verification-step"
+                    data-step="1"
+                >
+                    <span class="step-status"></span>
+                    <span>
+                        Searching the live web...
+                    </span>
+                </div>
+
+                <div
+                    class="verification-step"
+                    data-step="2"
+                >
+                    <span class="step-status"></span>
+                    <span>
+                        Cross-referencing sources...
+                    </span>
+                </div>
+
+                <div
+                    class="verification-step"
+                    data-step="3"
+                >
+                    <span class="step-status"></span>
+                    <span>
+                        Checking trusted news sources...
+                    </span>
+                </div>
+
+                <div
+                    class="verification-step"
+                    data-step="4"
+                >
+                    <span class="step-status"></span>
+                    <span>
+                        AI reasoning &amp; plausibility check...
+                    </span>
+                </div>
+
+                <div
+                    class="verification-step"
+                    data-step="5"
+                >
+                    <span class="step-status"></span>
+                    <span>
+                        Running ML prediction...
+                    </span>
+                </div>
+
+            </div>
+
         </div>
+
+
+        <!-- =================================================
+             VERIFICATION RECEIPT
+        ================================================== -->
+
+        <div
+            id="resultBox"
+            class="result-box hidden"
+        >
+
+            <div class="receipt-topline">
+
+                <span class="receipt-brand">
+                    VERIQUEST
+                </span>
+
+                <span id="receiptTime">
+                    VERIFICATION RECEIPT
+                </span>
+
+            </div>
+
+
+            <div class="result-header receipt-header">
+
+                <div>
+
+                    <span class="result-label">
+                        VERDICT
+                    </span>
+
+                    <h3 id="verdictText">
+                        —
+                    </h3>
+
+                    <span
+                        id="verdictSubtext"
+                        class="verdict-subtext"
+                    >
+                        Confidence in this verdict
+                    </span>
+
+                </div>
+
+
+                <div class="score-block">
+
+                    <span>
+                        SIGNAL SCORE
+                    </span>
+
+                    <strong id="signalScore">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div
+                    id="verdictIcon"
+                    class="verdict-icon"
+                >
+                    ?
+                </div>
+
+            </div>
+
+
+            <div class="claim-box">
+
+                <span>
+                    THE CLAIM
+                </span>
+
+                <strong id="resultHeadline">
+                    —
+                </strong>
+
+            </div>
+
+
+            <div class="receipt-body">
+
+                <div class="receipt-summary-grid">
+
+                    <div>
+                        <span>
+                            CONFIDENCE
+                        </span>
+
+                        <strong id="resultConfidenceTop">
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>
+                            MODE
+                        </span>
+
+                        <strong id="resultModeTop">
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>
+                            TIME
+                        </span>
+
+                        <strong id="resultTime">
+                            —
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <div class="result-row">
+
+                    <span>
+                        Detection Mode
+                    </span>
+
+                    <strong id="resultMode">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div
+                    id="publisherRow"
+                    class="result-row hidden"
+                >
+
+                    <span>
+                        Fact Checker
+                    </span>
+
+                    <strong id="resultPublisher">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div
+                    id="ratingRow"
+                    class="result-row hidden"
+                >
+
+                    <span>
+                        Rating
+                    </span>
+
+                    <strong id="resultRating">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div
+                    id="reasonBox"
+                    class="reason-box hidden"
+                >
+
+                    <strong>
+                        WHY THIS VERDICT?
+                    </strong>
+
+                    <p id="resultReason"></p>
+
+                </div>
+
+
+                <div
+                    id="sourcesBox"
+                    class="sources-box hidden"
+                >
+
+                    <strong>
+                        RECEIPTS / SOURCES
+                    </strong>
+
+                    <ul id="sourcesList"></ul>
+
+                </div>
+
+
+                <div
+                    id="verifiedBox"
+                    class="insight-box verified-insight hidden"
+                >
+
+                    <strong>
+                        ✓ VERIFIED
+                    </strong>
+
+                    <ul id="verifiedList"></ul>
+
+                </div>
+
+
+                <div
+                    id="disputedBox"
+                    class="insight-box disputed-insight hidden"
+                >
+
+                    <strong>
+                        △ DISPUTED
+                    </strong>
+
+                    <ul id="disputedList"></ul>
+
+                </div>
+
+            </div>
+
+        </div>
+
     </section>
 
-    <!-- EXPLAINABLE AI -->
+
+    <!-- =====================================================
+         EXPLAINABLE AI
+    ====================================================== -->
+
     <section class="card explain-card">
 
         <div class="section-heading">
+
             <div class="title-row">
-                <div class="section-icon explain-icon">AI</div>
+
+                <div class="section-icon explain-icon">
+                    AI
+                </div>
 
                 <div>
-                    <h3>Explainable AI</h3>
+
+                    <h3>
+                        Explainable AI
+                    </h3>
+
                     <p>
                         See which words influenced the model's prediction.
                     </p>
+
                 </div>
+
             </div>
+
         </div>
+
 
         <div class="explain-controls">
 
             <select id="explainMethod">
-                <option value="lime">LIME</option>
-                <option value="shap">SHAP</option>
+
+                <option value="lime">
+                    LIME
+                </option>
+
+                <option value="shap">
+                    SHAP
+                </option>
+
             </select>
+
 
             <button
                 type="button"
@@ -180,51 +539,95 @@
 
         </div>
 
-        <div id="explainLoading" class="loading-box hidden">
+
+        <div
+            id="explainLoading"
+            class="loading-box hidden"
+        >
+
             <div class="loading-spinner"></div>
-            <div>Generating explanation...</div>
+
+            <div>
+                Generating explanation...
+            </div>
+
         </div>
 
-        <div id="explainError" class="error-box hidden"></div>
 
-        <div id="explainResult" class="explain-result hidden">
+        <div
+            id="explainError"
+            class="error-box hidden"
+        ></div>
+
+
+        <div
+            id="explainResult"
+            class="explain-result hidden"
+        >
 
             <div class="explain-summary">
-                <strong>Word Importance</strong>
+
+                <strong>
+                    Word Importance
+                </strong>
 
                 <p>
                     Positive values push the model toward
                     REAL. Negative values push it toward FAKE.
                 </p>
+
             </div>
 
-            <div id="wordImportance" class="word-importance"></div>
+
+            <div
+                id="wordImportance"
+                class="word-importance"
+            ></div>
 
         </div>
 
+
         <div class="explain-note">
-            <strong>How it works:</strong>
+
+            <strong>
+                How it works:
+            </strong>
+
             LIME or SHAP analyzes the model's prediction
             and estimates the contribution of individual
             words in the headline.
+
         </div>
 
     </section>
 
-    <!-- 5-LAYER VERIFICATION SYSTEM -->
+
+    <!-- =====================================================
+         5 LAYER SYSTEM
+    ====================================================== -->
+
     <section class="card layers-card">
 
         <div class="section-heading">
 
             <div class="title-row">
-                <div class="section-icon layers-icon">5</div>
+
+                <div class="section-icon layers-icon">
+                    5
+                </div>
 
                 <div>
-                    <h3>5-Layer Verification System</h3>
+
+                    <h3>
+                        5-Layer Verification System
+                    </h3>
+
                     <p>
                         Every headline passes through five verification layers.
                     </p>
+
                 </div>
+
             </div>
 
             <span class="layer-badge">
@@ -233,164 +636,299 @@
 
         </div>
 
+
         <div class="verification-layers">
 
-            <!-- LAYER 1 -->
             <div class="layer-box">
-                <div class="layer-number">01</div>
-                <div class="layer-icon">✓</div>
 
-                <h4>Trusted Source</h4>
+                <div class="layer-number">
+                    01
+                </div>
+
+                <div class="layer-icon">
+                    ✓
+                </div>
+
+                <h4>
+                    Trusted Source
+                </h4>
 
                 <p>
                     Checks the headline against trusted
                     news sources.
                 </p>
+
             </div>
 
-            <!-- LAYER 2 -->
-            <div class="layer-box">
-                <div class="layer-number">02</div>
-                <div class="layer-icon">✓</div>
 
-                <h4>Fact Check</h4>
+            <div class="layer-box">
+
+                <div class="layer-number">
+                    02
+                </div>
+
+                <div class="layer-icon">
+                    ✓
+                </div>
+
+                <h4>
+                    Fact Check
+                </h4>
 
                 <p>
                     Searches fact-checking databases for
                     existing reviews.
                 </p>
+
             </div>
 
-            <!-- LAYER 3 -->
-            <div class="layer-box">
-                <div class="layer-number">03</div>
-                <div class="layer-icon">✓</div>
 
-                <h4>Plausibility</h4>
+            <div class="layer-box">
+
+                <div class="layer-number">
+                    03
+                </div>
+
+                <div class="layer-icon">
+                    ✓
+                </div>
+
+                <h4>
+                    Plausibility
+                </h4>
 
                 <p>
                     Detects suspicious patterns and
                     misleading claims.
                 </p>
+
             </div>
 
-            <!-- LAYER 4 -->
-            <div class="layer-box">
-                <div class="layer-number">04</div>
-                <div class="layer-icon">AI</div>
 
-                <h4>AI Reasoning</h4>
+            <div class="layer-box">
+
+                <div class="layer-number">
+                    04
+                </div>
+
+                <div class="layer-icon">
+                    AI
+                </div>
+
+                <h4>
+                    AI Reasoning
+                </h4>
 
                 <p>
                     Uses AI reasoning to evaluate the
                     credibility of the claim.
                 </p>
+
             </div>
 
-            <!-- LAYER 5 -->
-            <div class="layer-box">
-                <div class="layer-number">05</div>
-                <div class="layer-icon">ML</div>
 
-                <h4>ML Prediction</h4>
+            <div class="layer-box">
+
+                <div class="layer-number">
+                    05
+                </div>
+
+                <div class="layer-icon">
+                    ML
+                </div>
+
+                <h4>
+                    ML Prediction
+                </h4>
 
                 <p>
                     Machine learning model gives the
                     final prediction.
                 </p>
+
             </div>
 
         </div>
+
     </section>
 
-    <!-- STATS -->
+
+    <!-- =====================================================
+         STATS
+    ====================================================== -->
+
     <section class="stats-grid">
 
         <div class="dashboard-card">
-            <span>Total Checks</span>
-            <strong id="statTotal">0</strong>
+
+            <span>
+                Total Checks
+            </span>
+
+            <strong id="statTotal">
+                0
+            </strong>
+
         </div>
+
 
         <div class="dashboard-card">
-            <span>Real</span>
-            <strong id="statReal" class="real-text">0</strong>
-        </div>
 
-        <div class="dashboard-card">
-            <span>Fake</span>
-            <strong id="statFake" class="fake-text">0</strong>
-        </div>
+            <span>
+                Real
+            </span>
 
-    </section>
-
-    <!-- LIVE FEED -->
-    <section class="card">
-
-        <div class="section-heading">
-
-            <div>
-                <h3>Live News Feed</h3>
-                <p>
-                    Latest headlines classified by the ML model.
-                </p>
-            </div>
-
-            <button
-                id="refreshFeedBtn"
-                class="refresh-btn"
-                type="button"
+            <strong
+                id="statReal"
+                class="real-text"
             >
-                Refresh
-            </button>
+                0
+            </strong>
 
         </div>
 
-        <div id="liveFeed">
-            <div class="feed-empty">
-                Loading live headlines...
-            </div>
+
+        <div class="dashboard-card">
+
+            <span>
+                Fake
+            </span>
+
+            <strong
+                id="statFake"
+                class="fake-text"
+            >
+                0
+            </strong>
+
         </div>
 
     </section>
 
-    <!-- HISTORY -->
+
+    <!-- =====================================================
+         HISTORY
+    ====================================================== -->
+
     <section class="card">
 
         <div class="section-heading">
 
             <div>
-                <h3>Recent Checks</h3>
+
+                <h3>
+                    Recent Checks
+                </h3>
+
                 <p>
                     Your recent verification history.
                 </p>
+
             </div>
 
         </div>
 
+
         <div id="historyList">
+
             <div class="history-empty">
                 Loading history...
             </div>
+
         </div>
 
     </section>
 
 </main>
 
-<!-- CHATBOT -->
+
+<!-- =========================================================
+     LIVE FEED SIDEBAR
+========================================================= -->
+
+<aside
+    id="liveFeedPanel"
+    class="live-feed-panel hidden"
+    aria-label="Live news feed"
+>
+
+    <div class="live-feed-panel-head">
+
+        <div>
+
+            <span class="live-kicker">
+                <span class="live-dot"></span>
+                LIVE
+            </span>
+
+            <h3>
+                Live News Feed
+            </h3>
+
+            <p>
+                Latest headlines classified by the ML model.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="closeLiveFeed"
+            class="feed-close"
+            aria-label="Close live feed"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <button
+        id="refreshFeedBtn"
+        class="refresh-btn feed-refresh"
+        type="button"
+    >
+        Refresh
+    </button>
+
+
+    <div id="liveFeed">
+
+        <div class="feed-empty">
+            Loading live headlines...
+        </div>
+
+    </div>
+
+</aside>
+
+
+<!-- =========================================================
+     CHATBOT
+========================================================= -->
+
 <div id="chatbot" class="chatbot">
 
-    <div id="chatWindow" class="chat-window hidden">
+    <div
+        id="chatWindow"
+        class="chat-window hidden"
+    >
 
         <div class="chat-header">
 
             <div>
-                <strong>VeriQuest AI</strong>
+
+                <strong>
+                    VeriQuest AI
+                </strong>
 
                 <span>
                     Ask me about your result
                 </span>
+
             </div>
+
 
             <button
                 type="button"
@@ -402,7 +940,11 @@
 
         </div>
 
-        <div id="chatMessages" class="chat-messages">
+
+        <div
+            id="chatMessages"
+            class="chat-messages"
+        >
 
             <div class="chat-message bot">
                 Hi! 👋 I'm VeriQuest AI.
@@ -413,7 +955,11 @@
 
         </div>
 
-        <form id="chatForm" class="chat-form">
+
+        <form
+            id="chatForm"
+            class="chat-form"
+        >
 
             <input
                 id="chatInput"
@@ -430,6 +976,7 @@
 
     </div>
 
+
     <button
         type="button"
         id="chatToggle"
@@ -441,12 +988,18 @@
 
 </div>
 
-<!-- FOOTER -->
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
 <footer class="footer">
 
     <div class="container">
 
-        <strong>VeriQuest</strong>
+        <strong>
+            VeriQuest
+        </strong>
 
         <span>
             AI-powered misinformation detection
@@ -456,7 +1009,10 @@
 
 </footer>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script
+    src="{{ url_for('static', filename='script.js') }}"
+></script>
 
 </body>
 </html>
