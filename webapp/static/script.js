@@ -45,6 +45,53 @@ function escapeText(value) {
 
 
 /* =========================================================
+   FULL PAGE VIEW (History / Analytics / Dashboard / Verify)
+========================================================= */
+
+function setFullPageSection(sectionName) {
+    var sections = [
+        "dashboardSection",
+        "verifySection",
+        "explainSection",
+        "layersSection",
+        "analyticsSection",
+        "historySection"
+    ];
+
+    // default: show all for scroll layout unless full-page mode requested
+    var fullOnly = ["analytics", "history"];
+
+    if (fullOnly.indexOf(sectionName) !== -1) {
+        sections.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (
+                (sectionName === "analytics" && id === "analyticsSection") ||
+                (sectionName === "history" && id === "historySection")
+            ) {
+                el.style.display = "block";
+                el.classList.add("full-page-view");
+            } else {
+                el.style.display = "none";
+                el.classList.remove("full-page-view");
+            }
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+    }
+
+    // restore normal multi-section view
+    sections.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = "";
+        el.classList.remove("full-page-view");
+    });
+}
+
+
+
+/* =========================================================
    DOM
 ========================================================= */
 
@@ -425,6 +472,8 @@ sidebarItems.forEach(
 
                     closeSidebar();
 
+                    setFullPageSection("dashboard");
+
                     window.scrollTo({
                         top: 0,
                         behavior: "smooth"
@@ -448,6 +497,8 @@ sidebarItems.forEach(
                     closeSettingsPanel();
 
                     closeSidebar();
+
+                    setFullPageSection("verify");
 
                     scrollToSection(
                         verifySection
@@ -514,9 +565,9 @@ sidebarItems.forEach(
 
                     closeSidebar();
 
-                    scrollToSection(
-                        analyticsSection
-                    );
+                    setFullPageSection("analytics");
+
+                    if (typeof loadStats === "function") loadStats();
 
                     return;
                 }
@@ -537,9 +588,9 @@ sidebarItems.forEach(
 
                     closeSidebar();
 
-                    scrollToSection(
-                        historySection
-                    );
+                    setFullPageSection("history");
+
+                    if (typeof loadHistory === "function") loadHistory();
 
                     return;
                 }
@@ -2192,6 +2243,7 @@ async function loadStats() {
 
             statTotal.textContent =
                 total;
+        try { updateAnalyticsProUI(statTotal.textContent, statReal && statReal.textContent, statFake && statFake.textContent); } catch(e) {}
         }
 
 
@@ -3497,3 +3549,170 @@ document.addEventListener(
         );
     }
 );
+
+
+/* =========================================================
+   THEME + SAVE SETTINGS
+========================================================= */
+
+function applyTheme(theme) {
+    if (theme === "light") {
+        document.body.classList.add("light-theme");
+    } else {
+        document.body.classList.remove("light-theme");
+    }
+    localStorage.setItem("veriquest_theme", theme);
+
+    var darkBtn = document.getElementById("themeDarkBtn");
+    var lightBtn = document.getElementById("themeLightBtn");
+    if (darkBtn) darkBtn.classList.toggle("active", theme === "dark");
+    if (lightBtn) lightBtn.classList.toggle("active", theme === "light");
+}
+
+(function initTheme() {
+    var saved = localStorage.getItem("veriquest_theme") || "dark";
+    applyTheme(saved);
+})();
+
+var themeDarkBtn = document.getElementById("themeDarkBtn");
+var themeLightBtn = document.getElementById("themeLightBtn");
+if (themeDarkBtn) {
+    themeDarkBtn.addEventListener("click", function() { applyTheme("dark"); });
+}
+if (themeLightBtn) {
+    themeLightBtn.addEventListener("click", function() { applyTheme("light"); });
+}
+
+function saveSettingsToStorage() {
+    var settings = {
+        layerLive: document.getElementById("layerLive") ? document.getElementById("layerLive").checked : true,
+        layerFactcheck: document.getElementById("layerFactcheck") ? document.getElementById("layerFactcheck").checked : true,
+        layerRedflag: document.getElementById("layerRedflag") ? document.getElementById("layerRedflag").checked : true,
+        layerLlm: document.getElementById("layerLlm") ? document.getElementById("layerLlm").checked : false,
+        layerModel: document.getElementById("layerModel") ? document.getElementById("layerModel").checked : true,
+        fallbackModel: document.getElementById("fallbackModel") ? document.getElementById("fallbackModel").value : "auto",
+        llmProvider: document.getElementById("llmProvider") ? document.getElementById("llmProvider").value : "gemini",
+        explainMethod: document.getElementById("settingsExplainMethod") ? document.getElementById("settingsExplainMethod").value : "lime",
+        threshold: document.getElementById("thresholdSlider") ? document.getElementById("thresholdSlider").value : "60",
+        autoRefreshFeed: document.getElementById("autoRefreshFeed") ? document.getElementById("autoRefreshFeed").checked : true,
+        theme: localStorage.getItem("veriquest_theme") || "dark"
+    };
+    localStorage.setItem("veriquest_settings", JSON.stringify(settings));
+    return settings;
+}
+
+function loadSettingsFromStorage() {
+    try {
+        var raw = localStorage.getItem("veriquest_settings");
+        if (!raw) return;
+        var s = JSON.parse(raw);
+        function setCheck(id, val) {
+            var el = document.getElementById(id);
+            if (el && typeof val === "boolean") {
+                el.checked = val;
+                el.dispatchEvent(new Event("change"));
+            }
+        }
+        setCheck("layerLive", s.layerLive);
+        setCheck("layerFactcheck", s.layerFactcheck);
+        setCheck("layerRedflag", s.layerRedflag);
+        setCheck("layerLlm", s.layerLlm);
+        setCheck("layerModel", s.layerModel);
+        if (document.getElementById("fallbackModel") && s.fallbackModel) document.getElementById("fallbackModel").value = s.fallbackModel;
+        if (document.getElementById("llmProvider") && s.llmProvider) document.getElementById("llmProvider").value = s.llmProvider;
+        if (document.getElementById("settingsExplainMethod") && s.explainMethod) document.getElementById("settingsExplainMethod").value = s.explainMethod;
+        if (document.getElementById("thresholdSlider") && s.threshold) {
+            document.getElementById("thresholdSlider").value = s.threshold;
+            var tv = document.getElementById("thresholdValue");
+            if (tv) tv.textContent = s.threshold + "%";
+        }
+        setCheck("autoRefreshFeed", s.autoRefreshFeed);
+        if (s.theme) applyTheme(s.theme);
+    } catch (e) {
+        console.warn("Could not load settings", e);
+    }
+}
+
+var saveSettingsBtn = document.getElementById("saveSettingsBtn");
+if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener("click", function() {
+        saveSettingsToStorage();
+        var prev = saveSettingsBtn.textContent;
+        saveSettingsBtn.textContent = "Saved ✓";
+        setTimeout(function() { saveSettingsBtn.textContent = prev; }, 1500);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    loadSettingsFromStorage();
+});
+
+
+/* =========================================================
+   ANALYTICS PRO UI UPDATE
+========================================================= */
+
+function updateAnalyticsProUI(total, real, fake) {
+    total = Number(total) || 0;
+    real = Number(real) || 0;
+    fake = Number(fake) || 0;
+
+    var elTotal = document.getElementById("statTotal");
+    var elReal = document.getElementById("statReal");
+    var elFake = document.getElementById("statFake");
+    if (elTotal) elTotal.textContent = total;
+    if (elReal) elReal.textContent = real;
+    if (elFake) elFake.textContent = fake;
+
+    var realPct = total > 0 ? (real / total) * 100 : 0;
+    var fakePct = total > 0 ? (fake / total) * 100 : 0;
+
+    var acc = document.getElementById("accuracyPct");
+    if (acc) acc.textContent = total > 0 ? (realPct.toFixed(1) + "%") : "—";
+
+    var lr = document.getElementById("legendReal");
+    var lrp = document.getElementById("legendRealPct");
+    var lf = document.getElementById("legendFake");
+    var lfp = document.getElementById("legendFakePct");
+    if (lr) lr.textContent = real;
+    if (lrp) lrp.textContent = realPct.toFixed(1) + "%";
+    if (lf) lf.textContent = fake;
+    if (lfp) lfp.textContent = fakePct.toFixed(1) + "%";
+
+    // donut: circumference ~ 2*pi*48 ≈ 301.6
+    var circ = 301.6;
+    var donut = document.getElementById("donutReal");
+    if (donut) {
+        var realLen = (realPct / 100) * circ;
+        donut.setAttribute("stroke-dasharray", realLen + " " + circ);
+    }
+
+    var tip = document.getElementById("accuracyTip");
+    if (tip) {
+        if (total === 0) {
+            tip.textContent = "Run more checks to see accuracy insights.";
+        } else if (realPct >= 60) {
+            tip.textContent = "Great job! Most of your verified headlines are classified as real.";
+        } else {
+            tip.textContent = "Many headlines were flagged as fake or disputed — review sources carefully.";
+        }
+    }
+
+    var overall = document.getElementById("overallPerf");
+    if (overall) {
+        overall.textContent = total > 0 ? (Math.round((realPct * 0.5 + 50)) + "%") : "—";
+    }
+}
+
+
+(function watchStats() {
+    function sync() {
+        var t = document.getElementById("statTotal");
+        var r = document.getElementById("statReal");
+        var f = document.getElementById("statFake");
+        if (t && r && f && typeof updateAnalyticsProUI === "function") {
+            updateAnalyticsProUI(t.textContent, r.textContent, f.textContent);
+        }
+    }
+    setInterval(sync, 1500);
+})();

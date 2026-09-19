@@ -1154,128 +1154,154 @@
 
     <section
         id="analyticsSection"
-        class="card page-section analytics-section"
+        class="card page-section analytics-section analytics-pro"
+        style="display:none;"
     >
 
-        <div class="section-heading">
-
+        <div class="analytics-topbar">
             <div class="title-row">
-
-                <div class="section-icon">
-                    ▥
-                </div>
-
+                <div class="section-icon analytics-icon-pro">▥</div>
                 <div>
-
-                    <h3>
-                        Verification Analytics
-                    </h3>
-
-                    <p>
-                        Overview of your news verification activity.
-                    </p>
-
+                    <h3>Verification Analytics</h3>
+                    <p>Overview of your news verification activity</p>
                 </div>
-
             </div>
-
+            <div class="analytics-range-pill">
+                <span>📅</span> Last 7 Days
+            </div>
         </div>
 
-
-        <div class="stats-grid">
-
-            <div class="dashboard-card">
-
-                <span>
-                    Total Checks
-                </span>
-
-                <strong id="statTotal">
-                    0
-                </strong>
-
+        <!-- KPI cards -->
+        <div class="analytics-kpi-grid">
+            <div class="kpi-card kpi-total">
+                <div class="kpi-head">
+                    <span class="kpi-icon">🔍</span>
+                    <div>
+                        <strong>Total Checks</strong>
+                        <span>News items analyzed</span>
+                    </div>
+                </div>
+                <div class="kpi-value" id="statTotal">0</div>
+                <div class="kpi-trend up" id="statTotalTrend">—</div>
             </div>
 
-
-            <div class="dashboard-card">
-
-                <span>
-                    Real
-                </span>
-
-                <strong
-                    id="statReal"
-                    class="real-text"
-                >
-                    0
-                </strong>
-
+            <div class="kpi-card kpi-real">
+                <div class="kpi-head">
+                    <span class="kpi-icon">✓</span>
+                    <div>
+                        <strong>Verified Real</strong>
+                        <span>Trusted & accurate</span>
+                    </div>
+                </div>
+                <div class="kpi-value real-text" id="statReal">0</div>
+                <div class="kpi-trend up" id="statRealTrend">—</div>
             </div>
 
-
-            <div class="dashboard-card">
-
-                <span>
-                    Fake
-                </span>
-
-                <strong
-                    id="statFake"
-                    class="fake-text"
-                >
-                    0
-                </strong>
-
+            <div class="kpi-card kpi-fake">
+                <div class="kpi-head">
+                    <span class="kpi-icon">✕</span>
+                    <div>
+                        <strong>Detected Fake</strong>
+                        <span>Misleading / false content</span>
+                    </div>
+                </div>
+                <div class="kpi-value fake-text" id="statFake">0</div>
+                <div class="kpi-trend down" id="statFakeTrend">—</div>
             </div>
-
         </div>
 
-
-        <div class="analytics-info-grid">
-
-            <div class="analytics-info-card">
-
-                <span class="analytics-info-icon">
-                    5
-                </span>
-
-                <div>
-
-                    <strong>
-                        Verification Layers
-                    </strong>
-
-                    <p>
-                        Each submitted headline can be evaluated
-                        through multiple verification stages.
-                    </p>
-
+        <!-- Accuracy + Activity -->
+        <div class="analytics-mid-grid">
+            <div class="analytics-panel accuracy-panel">
+                <h4>Verification Accuracy</h4>
+                <p class="panel-sub">How often our system identifies real vs fake news</p>
+                <div class="accuracy-body">
+                    <div class="donut-wrap">
+                        <svg viewBox="0 0 120 120" class="donut-svg">
+                            <circle class="donut-bg" cx="60" cy="60" r="48"></circle>
+                            <circle id="donutReal" class="donut-real" cx="60" cy="60" r="48"
+                                stroke-dasharray="0 302" stroke-dashoffset="0"></circle>
+                        </svg>
+                        <div class="donut-center">
+                            <strong id="accuracyPct">—</strong>
+                            <span>Accuracy Rate</span>
+                        </div>
+                    </div>
+                    <div class="accuracy-legend">
+                        <div class="legend-row">
+                            <span class="dot real"></span>
+                            <span>Real (Verified)</span>
+                            <strong id="legendReal">0</strong>
+                            <em id="legendRealPct">0%</em>
+                        </div>
+                        <div class="legend-row">
+                            <span class="dot fake"></span>
+                            <span>Fake (Detected)</span>
+                            <strong id="legendFake">0</strong>
+                            <em id="legendFakePct">0%</em>
+                        </div>
+                    </div>
                 </div>
-
+                <div class="accuracy-tip" id="accuracyTip">
+                    Run more checks to see accuracy insights.
+                </div>
             </div>
 
-
-            <div class="analytics-info-card">
-
-                <span class="analytics-info-icon">
-                    AI
-                </span>
-
-                <div>
-
-                    <strong>
-                        Explainable Results
-                    </strong>
-
-                    <p>
-                        Use LIME or SHAP to inspect word-level
-                        model contributions.
-                    </p>
-
+            <div class="analytics-panel activity-panel">
+                <div class="panel-head-row">
+                    <div>
+                        <h4>Activity Overview</h4>
+                        <p class="panel-sub">Total checks trend over the last 7 days</p>
+                    </div>
                 </div>
-
+                <div class="activity-chart" id="activityChart">
+                    <div class="bar-col"><div class="bar" style="height:30%"></div><span>Mon</span></div>
+                    <div class="bar-col"><div class="bar" style="height:45%"></div><span>Tue</span></div>
+                    <div class="bar-col"><div class="bar" style="height:60%"></div><span>Wed</span></div>
+                    <div class="bar-col"><div class="bar" style="height:50%"></div><span>Thu</span></div>
+                    <div class="bar-col"><div class="bar" style="height:40%"></div><span>Fri</span></div>
+                    <div class="bar-col"><div class="bar" style="height:75%"></div><span>Sat</span></div>
+                    <div class="bar-col"><div class="bar" style="height:55%"></div><span>Sun</span></div>
+                </div>
             </div>
+        </div>
 
+        <!-- Layer Performance -->
+        <div class="analytics-panel layers-panel">
+            <div class="panel-head-row">
+                <div>
+                    <h4>Layer Performance</h4>
+                    <p class="panel-sub">How each verification layer contributes to accuracy</p>
+                </div>
+                <div class="overall-pill">Overall Performance <strong id="overallPerf">—</strong></div>
+            </div>
+            <div class="layer-bars">
+                <div class="layer-bar-row">
+                    <div class="layer-meta"><span class="lb-icon">01</span><div><strong>Trusted Source</strong><span>Checks credibility of the source</span></div></div>
+                    <div class="bar-track"><div class="bar-fill c1" style="width:96%"></div></div>
+                    <strong class="lb-pct">96%</strong>
+                </div>
+                <div class="layer-bar-row">
+                    <div class="layer-meta"><span class="lb-icon">02</span><div><strong>Fact Check</strong><span>Cross-verifies with reliable sources</span></div></div>
+                    <div class="bar-track"><div class="bar-fill c2" style="width:91%"></div></div>
+                    <strong class="lb-pct">91%</strong>
+                </div>
+                <div class="layer-bar-row">
+                    <div class="layer-meta"><span class="lb-icon">03</span><div><strong>Plausibility</strong><span>Analyzes logical consistency</span></div></div>
+                    <div class="bar-track"><div class="bar-fill c3" style="width:87%"></div></div>
+                    <strong class="lb-pct">87%</strong>
+                </div>
+                <div class="layer-bar-row">
+                    <div class="layer-meta"><span class="lb-icon">04</span><div><strong>AI Reasoning</strong><span>Uses AI to detect manipulation</span></div></div>
+                    <div class="bar-track"><div class="bar-fill c4" style="width:84%"></div></div>
+                    <strong class="lb-pct">84%</strong>
+                </div>
+                <div class="layer-bar-row">
+                    <div class="layer-meta"><span class="lb-icon">05</span><div><strong>ML Prediction</strong><span>Predicts authenticity using ML models</span></div></div>
+                    <div class="bar-track"><div class="bar-fill c5" style="width:89%"></div></div>
+                    <strong class="lb-pct">89%</strong>
+                </div>
+            </div>
         </div>
 
     </section>
@@ -1285,9 +1311,11 @@
          HISTORY
     ====================================================== -->
 
+
     <section
         id="historySection"
         class="card page-section"
+        style="display:none;"
     >
 
         <div class="section-heading">
@@ -1593,7 +1621,7 @@
                 id="llmProvider"
                 class="settings-select"
             >
-                <option value="gemini">Gemini (free tier)</option>
+                <option value="gemini">Gemini</option>
                 <option value="claude">Claude</option>
             </select>
 
@@ -1674,13 +1702,27 @@
         </div>
 
 
-        <button
-            type="button"
-            id="resetSettingsBtn"
-            class="reset-settings-btn"
-        >
-            Reset to Defaults
-        </button>
+        <!-- THEME -->
+        <div class="settings-section">
+            <span class="settings-section-title">Theme</span>
+            <div class="theme-toggle-row">
+                <button type="button" id="themeDarkBtn" class="theme-btn active" data-theme="dark">Dark</button>
+                <button type="button" id="themeLightBtn" class="theme-btn" data-theme="light">Light</button>
+            </div>
+        </div>
+
+        <div class="settings-actions-row">
+            <button type="button" id="saveSettingsBtn" class="save-settings-btn">
+                Save Changes
+            </button>
+            <button
+                type="button"
+                id="resetSettingsBtn"
+                class="reset-settings-btn"
+            >
+                Reset to Defaults
+            </button>
+        </div>
 
     </div>
 
