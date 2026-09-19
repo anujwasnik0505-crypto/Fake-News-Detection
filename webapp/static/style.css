@@ -4271,3 +4271,32 @@ body.light-theme .feed-thumb-placeholder {
 #historySection:not(.full-page-view) {
     /* controlled by JS display */
 }
+
+/* Phase 2/3 input mode tabs */
+.mode-tab {
+    padding: 8px 14px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+    color: #91a0b5;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+.mode-tab:hover {
+    color: white;
+    background: rgba(37,99,235,0.16);
+    border-color: rgba(37,99,235,0.35);
+}
+.mode-tab.active {
+    color: white;
+    background: rgba(37,99,235,0.22);
+    border-color: rgba(37,99,235,0.45);
+}
+.input-panel.hidden { display: none !important; }
+.image-upload-zone:hover {
+    border-color: rgba(59,130,246,0.4) !important;
+    background: rgba(37,99,235,0.06) !important;
+}
+

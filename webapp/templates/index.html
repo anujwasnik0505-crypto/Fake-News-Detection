@@ -435,11 +435,11 @@
 
                 <div>
                     <h3>
-                        Check a News Headline
+                        Verify News
                     </h3>
 
                     <p>
-                        Enter a headline below to verify its credibility.
+                        Headline, full article URL, Hindi text, or screenshot — all supported.
                     </p>
                 </div>
 
@@ -452,35 +452,69 @@
         </div>
 
 
+        <!-- Input mode tabs: Headline | URL | Image -->
+        <div class="input-mode-tabs" id="inputModeTabs" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+            <button type="button" class="mode-tab active" data-mode="headline" id="modeHeadline">
+                Headline / Text
+            </button>
+            <button type="button" class="mode-tab" data-mode="url" id="modeUrl">
+                News URL
+            </button>
+            <button type="button" class="mode-tab" data-mode="image" id="modeImage">
+                Image / Screenshot
+            </button>
+        </div>
+
+
         <form id="verifyForm">
 
-            <div class="textarea-wrapper">
-
-                <textarea
-                    id="headlineInput"
-                    name="headline"
-                    rows="5"
-                    maxlength="1000"
-                    placeholder="Paste or type a news headline here..."
-                ></textarea>
-
-
-                <div class="textarea-footer">
-
-                    <span id="charCount">
-                        0 / 1000
-                    </span>
-
-                    <button
-                        type="button"
-                        id="clearBtn"
-                        class="clear-btn"
-                    >
-                        Clear
-                    </button>
-
+            <!-- HEADLINE / TEXT mode -->
+            <div id="panelHeadline" class="input-panel">
+                <div class="textarea-wrapper">
+                    <textarea
+                        id="headlineInput"
+                        name="headline"
+                        rows="5"
+                        maxlength="2000"
+                        placeholder="Paste headline (English / Hindi / Hinglish)..."
+                    ></textarea>
+                    <div class="textarea-footer">
+                        <span id="charCount">0 / 2000</span>
+                        <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+                    </div>
                 </div>
+            </div>
 
+            <!-- URL mode -->
+            <div id="panelUrl" class="input-panel hidden">
+                <div class="textarea-wrapper">
+                    <input
+                        type="url"
+                        id="urlInput"
+                        name="url"
+                        placeholder="https://www.thehindu.com/news/..."
+                        style="width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#e8eef7;font-size:14px;"
+                    />
+                    <p style="margin:8px 0 0;font-size:11px;color:#64748b;">
+                        Full article will be fetched, claims extracted, and verified.
+                    </p>
+                </div>
+            </div>
+
+            <!-- IMAGE mode -->
+            <div id="panelImage" class="input-panel hidden">
+                <div class="image-upload-zone" id="imageDropZone" style="border:1px dashed rgba(255,255,255,0.15);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(255,255,255,0.03);">
+                    <input type="file" id="imageInput" accept="image/*" class="hidden" />
+                    <div id="imageUploadLabel">
+                        <div style="font-size:28px;margin-bottom:8px;">🖼</div>
+                        <div style="font-size:13px;color:#94a3b8;">Drop screenshot / meme here or click to upload</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:6px;">OCR → text → 5-layer verification</div>
+                    </div>
+                    <div id="imagePreview" class="hidden" style="margin-top:12px;">
+                        <img id="imagePreviewImg" alt="preview" style="max-height:160px;border-radius:8px;max-width:100%;" />
+                        <div id="imageFileName" style="font-size:11px;color:#94a3b8;margin-top:6px;"></div>
+                    </div>
+                </div>
             </div>
 
 
@@ -488,17 +522,10 @@
                 type="submit"
                 id="verifyBtn"
                 class="primary-btn"
+                style="margin-top:14px;"
             >
-
-                <span id="verifyBtnText">
-                    Verify Headline
-                </span>
-
-                <span
-                    id="verifySpinner"
-                    class="spinner hidden"
-                ></span>
-
+                <span id="verifyBtnText">Verify</span>
+                <span id="verifySpinner" class="spinner hidden"></span>
             </button>
 
         </form>
@@ -779,6 +806,28 @@
 
                     <p id="resultReason"></p>
 
+                </div>
+
+
+                <!-- Phase 2/3: Article / OCR / Claims info -->
+                <div id="articleInfoBox" class="reason-box hidden" style="margin-top:12px;">
+                    <strong>ARTICLE / SOURCE</strong>
+                    <p id="articleInfoText" style="margin:6px 0 0;font-size:12px;color:#94a3b8;"></p>
+                </div>
+
+                <div id="ocrInfoBox" class="reason-box hidden" style="margin-top:12px;">
+                    <strong>OCR EXTRACTED TEXT</strong>
+                    <p id="ocrInfoText" style="margin:6px 0 0;font-size:12px;color:#94a3b8;white-space:pre-wrap;"></p>
+                </div>
+
+                <div id="claimsBox" class="sources-box hidden" style="margin-top:12px;">
+                    <strong>EXTRACTED CLAIMS</strong>
+                    <ul id="claimsList"></ul>
+                </div>
+
+                <div id="layerReportBox" class="layer-report-box hidden" style="margin-top:14px;">
+                    <strong style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">LAYER-BY-LAYER REPORT</strong>
+                    <ul id="layerReportList" class="layer-report-list"></ul>
                 </div>
 
 

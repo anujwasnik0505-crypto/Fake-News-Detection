@@ -752,6 +752,95 @@ quickCards.forEach(
 
 
 /* =========================================================
+   INPUT MODE (Headline / URL / Image) — Phase 2 & 3
+========================================================= */
+
+let currentInputMode = "headline";
+let selectedImageFile = null;
+
+const modeTabs = document.querySelectorAll(".mode-tab");
+const panelHeadline = $("panelHeadline");
+const panelUrl = $("panelUrl");
+const panelImage = $("panelImage");
+const urlInput = $("urlInput");
+const imageInput = $("imageInput");
+const imageDropZone = $("imageDropZone");
+const imagePreview = $("imagePreview");
+const imagePreviewImg = $("imagePreviewImg");
+const imageFileName = $("imageFileName");
+const imageUploadLabel = $("imageUploadLabel");
+
+function setInputMode(mode) {
+    currentInputMode = mode;
+
+    modeTabs.forEach(function (tab) {
+        tab.classList.toggle("active", tab.dataset.mode === mode);
+    });
+
+    if (panelHeadline) panelHeadline.classList.toggle("hidden", mode !== "headline");
+    if (panelUrl) panelUrl.classList.toggle("hidden", mode !== "url");
+    if (panelImage) panelImage.classList.toggle("hidden", mode !== "image");
+
+    if (verifyBtnText) {
+        if (mode === "url") verifyBtnText.textContent = "Verify URL";
+        else if (mode === "image") verifyBtnText.textContent = "Verify Image";
+        else verifyBtnText.textContent = "Verify";
+    }
+}
+
+modeTabs.forEach(function (tab) {
+    tab.addEventListener("click", function (e) {
+        e.preventDefault();
+        setInputMode(tab.dataset.mode);
+    });
+});
+
+// Image upload UI
+if (imageDropZone && imageInput) {
+    imageDropZone.addEventListener("click", function () {
+        imageInput.click();
+    });
+
+    imageDropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        imageDropZone.style.borderColor = "rgba(59,130,246,0.5)";
+    });
+
+    imageDropZone.addEventListener("dragleave", function () {
+        imageDropZone.style.borderColor = "rgba(255,255,255,0.15)";
+    });
+
+    imageDropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        imageDropZone.style.borderColor = "rgba(255,255,255,0.15)";
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleImageFile(file);
+    });
+
+    imageInput.addEventListener("change", function () {
+        if (imageInput.files && imageInput.files[0]) {
+            handleImageFile(imageInput.files[0]);
+        }
+    });
+}
+
+function handleImageFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    selectedImageFile = file;
+    if (imageUploadLabel) hide(imageUploadLabel);
+    if (imagePreview) show(imagePreview);
+    if (imageFileName) imageFileName.textContent = file.name + " (" + Math.round(file.size / 1024) + " KB)";
+    if (imagePreviewImg) {
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            imagePreviewImg.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+
+/* =========================================================
    CHARACTER COUNTER
 ========================================================= */
 
@@ -768,7 +857,7 @@ if (headlineInput) {
             if (charCount) {
 
                 charCount.textContent =
-                    `${length} / 1000`;
+                    `${length} / 2000`;
             }
         }
     );
@@ -796,7 +885,7 @@ if (clearBtn) {
             if (charCount) {
 
                 charCount.textContent =
-                    "0 / 1000";
+                    "0 / 2000";
             }
 
 
@@ -809,7 +898,7 @@ if (clearBtn) {
 
 
 /* =========================================================
-   VERIFY FORM
+   VERIFY FORM (supports headline / URL / image)
 ========================================================= */
 
 if (verifyForm) {
@@ -821,124 +910,86 @@ if (verifyForm) {
             event.preventDefault();
             event.stopPropagation();
 
-
-            const headline =
-                headlineInput.value.trim();
-
-
-            if (!headline) {
-
-                headlineInput.focus();
-
-                return;
-            }
-
-
-            currentHeadline =
-                headline;
-
-
             hide(resultBox);
             hide(explainResult);
             hide(explainError);
 
-
-            verifyBtn.disabled =
-                true;
-
-
-            if (verifyBtnText) {
-
-                verifyBtnText.textContent =
-                    "Verifying...";
-            }
-
-
+            verifyBtn.disabled = true;
+            if (verifyBtnText) verifyBtnText.textContent = "Verifying...";
             show(verifySpinner);
             show(verifyLoading);
-
-
             resetVerificationSteps();
 
-
-            const animationPromise =
-                runVerificationAnimation();
-
+            const animationPromise = runVerificationAnimation();
 
             try {
+                let response;
+                let data;
 
-                const response =
-                    await fetch(
-                        "/api/check",
-                        {
-                            method: "POST",
+                if (currentInputMode === "image") {
+                    if (!selectedImageFile) {
+                        throw new Error("Please upload an image first.");
+                    }
+                    const formData = new FormData();
+                    formData.append("image", selectedImageFile);
+                    response = await fetch("/api/check-image", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    data = await response.json();
+                    currentHeadline = (data.headline || data.ocr && data.ocr.full_text || "").slice(0, 200);
 
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
+                } else if (currentInputMode === "url") {
+                    const url = (urlInput && urlInput.value || "").trim();
+                    if (!url) {
+                        if (urlInput) urlInput.focus();
+                        throw new Error("Please enter a news URL.");
+                    }
+                    response = await fetch("/api/check-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            url: url,
+                            extract_claims: true,
+                        }),
+                    });
+                    data = await response.json();
+                    currentHeadline = data.headline || url;
 
-                            body: JSON.stringify({
-
-                                headline:
-                                    headline,
-
-                                advanced_settings:
-                                    getAdvancedSettings()
-                            })
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.error ||
-                        "Verification failed."
-                    );
+                } else {
+                    // headline / text
+                    const headline = (headlineInput && headlineInput.value || "").trim();
+                    if (!headline) {
+                        if (headlineInput) headlineInput.focus();
+                        throw new Error("Please enter a headline.");
+                    }
+                    currentHeadline = headline;
+                    response = await fetch("/api/check", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            headline: headline,
+                            advanced_settings: getAdvancedSettings(),
+                        }),
+                    });
+                    data = await response.json();
                 }
 
+                if (!response.ok) {
+                    throw new Error(data.error || "Verification failed.");
+                }
 
                 await animationPromise;
-
-
-                displayVerificationResult(
-                    data
-                );
-
-
-                currentChatContext =
-                    buildChatContext(
-                        data
-                    );
-
-
+                displayVerificationResult(data);
+                currentChatContext = buildChatContext(data);
                 loadStats();
                 loadHistory();
 
-
-                setTimeout(
-                    function() {
-
-                        if (resultBox) {
-
-                            resultBox.scrollIntoView({
-                                behavior:
-                                    "smooth",
-
-                                block:
-                                    "nearest"
-                            });
-                        }
-
-                    },
-                    150
-                );
-
+                setTimeout(function () {
+                    if (resultBox) {
+                        resultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                }, 150);
 
             } catch (error) {
 
@@ -1360,12 +1411,73 @@ function displayVerificationResult(
 
 
     /* LAYER REPORT (Phase-1) */
-
     renderLayerReport(data.layers);
 
+    /* PHASE 2/3 — Article info */
+    const articleInfoBox = $("articleInfoBox");
+    const articleInfoText = $("articleInfoText");
+    if (data.article && articleInfoBox && articleInfoText) {
+        const a = data.article;
+        let info = "";
+        if (a.title) info += "Title: " + a.title + "\n";
+        if (a.url) info += "URL: " + a.url + "\n";
+        if (a.word_count) info += "Words: " + a.word_count;
+        if (a.method) info += " · Extracted via " + a.method;
+        articleInfoText.textContent = info.trim();
+        show(articleInfoBox);
+    } else if (articleInfoBox) {
+        hide(articleInfoBox);
+    }
+
+    /* PHASE 3 — OCR text */
+    const ocrInfoBox = $("ocrInfoBox");
+    const ocrInfoText = $("ocrInfoText");
+    if (data.ocr && data.ocr.full_text && ocrInfoBox && ocrInfoText) {
+        ocrInfoText.textContent =
+            (data.ocr.method ? "[" + data.ocr.method + "] " : "") +
+            data.ocr.full_text.slice(0, 800);
+        show(ocrInfoBox);
+    } else if (ocrInfoBox) {
+        hide(ocrInfoBox);
+    }
+
+    /* PHASE 3 — Extracted claims */
+    const claimsBox = $("claimsBox");
+    const claimsList = $("claimsList");
+    if (Array.isArray(data.claims) && data.claims.length > 0 && claimsBox && claimsList) {
+        claimsList.innerHTML = "";
+        data.claims.forEach(function (claim, idx) {
+            const li = document.createElement("li");
+            li.style.marginBottom = "6px";
+            li.textContent = (idx + 1) + ". " + claim;
+            // If we have per-claim verdicts, show badge
+            if (Array.isArray(data.claim_verdicts) && data.claim_verdicts[idx]) {
+                const v = data.claim_verdicts[idx];
+                const badge = document.createElement("span");
+                badge.textContent = " " + (v.verdict || "");
+                badge.style.cssText =
+                    "font-size:10px;font-weight:700;margin-left:6px;padding:1px 6px;border-radius:999px;" +
+                    "background:rgba(255,255,255,0.06);";
+                if ((v.verdict || "").toLowerCase().includes("real")) badge.style.color = "#4ade80";
+                else if ((v.verdict || "").toLowerCase().includes("suspicious") || (v.verdict || "").toLowerCase().includes("fake")) badge.style.color = "#fb7185";
+                else badge.style.color = "#94a3b8";
+                li.appendChild(badge);
+            }
+            claimsList.appendChild(li);
+        });
+        show(claimsBox);
+    } else if (claimsBox) {
+        hide(claimsBox);
+    }
+
+    /* Language badge */
+    if (data.language && data.language !== "en" && data.language !== "unknown") {
+        if (resultMode) {
+            resultMode.textContent = (resultMode.textContent || "") + " · Lang: " + data.language;
+        }
+    }
 
     /* VERIFIED / DISPUTED (legacy) */
-
     renderInsightList(
         verifiedBox,
         verifiedList,
@@ -1381,7 +1493,6 @@ function displayVerificationResult(
         data.disputed_points ||
         data.contradictions
     );
-
 
     show(resultBox);
 }
