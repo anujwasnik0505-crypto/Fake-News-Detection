@@ -136,6 +136,7 @@ const verifyNavBtn = $("verifyNavBtn");
 ========================================================= */
 
 const historyList = $("historyList");
+const historyRefreshBtn = $("historyRefreshBtn");
 
 
 /* =========================================================
@@ -151,6 +152,514 @@ const chatInput = $("chatInput");
 
 
 /* =========================================================
+   SIDEBAR
+========================================================= */
+
+const sidebarToggle = $("sidebarToggle");
+const sidebarClose = $("sidebarClose");
+const appSidebar = $("appSidebar");
+const sidebarOverlay = $("sidebarOverlay");
+const sidebarItems =
+    document.querySelectorAll(".sidebar-item");
+
+
+/* =========================================================
+   ADVANCED SETTINGS PANEL
+========================================================= */
+
+const settingsPanel = $("settingsPanel");
+const settingsToggle = $("settingsToggle");
+const closeSettings = $("closeSettings");
+
+const layerLive = $("layerLive");
+const layerFactcheck = $("layerFactcheck");
+const layerRedflag = $("layerRedflag");
+const layerLlm = $("layerLlm");
+const layerModel = $("layerModel");
+
+const dotLayerLive = $("dotLayerLive");
+const dotLayerFactcheck = $("dotLayerFactcheck");
+const dotLayerRedflag = $("dotLayerRedflag");
+const dotLayerLlm = $("dotLayerLlm");
+const dotLayerModel = $("dotLayerModel");
+
+const fallbackModel = $("fallbackModel");
+const llmProvider = $("llmProvider");
+const settingsExplainMethod = $("settingsExplainMethod");
+
+const thresholdSlider = $("thresholdSlider");
+const thresholdValue = $("thresholdValue");
+
+const autoRefreshFeed = $("autoRefreshFeed");
+const resetSettingsBtn = $("resetSettingsBtn");
+
+let liveFeedAutoRefreshTimer = null;
+
+
+/* =========================================================
+   SECTIONS
+========================================================= */
+
+const dashboardSection =
+    $("dashboardSection");
+
+const verifySection =
+    $("verifySection");
+
+const explainSection =
+    $("explainSection");
+
+const analyticsSection =
+    $("analyticsSection");
+
+const historySection =
+    $("historySection");
+
+
+/* =========================================================
+   SIDEBAR OPEN
+========================================================= */
+
+function openSidebar() {
+
+    if (!appSidebar) {
+        return;
+    }
+
+    appSidebar.classList.add("open");
+
+    if (sidebarOverlay) {
+        sidebarOverlay.classList.add("visible");
+    }
+
+    if (sidebarToggle) {
+        sidebarToggle.classList.add("open");
+
+        sidebarToggle.setAttribute(
+            "aria-expanded",
+            "true"
+        );
+    }
+
+    document.body.classList.add(
+        "sidebar-open"
+    );
+}
+
+
+/* =========================================================
+   SIDEBAR CLOSE
+========================================================= */
+
+function closeSidebar() {
+
+    if (appSidebar) {
+        appSidebar.classList.remove("open");
+    }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.classList.remove(
+            "visible"
+        );
+    }
+
+    if (sidebarToggle) {
+        sidebarToggle.classList.remove(
+            "open"
+        );
+
+        sidebarToggle.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+    }
+
+    document.body.classList.remove(
+        "sidebar-open"
+    );
+}
+
+
+/* =========================================================
+   SIDEBAR TOGGLE
+========================================================= */
+
+if (sidebarToggle) {
+
+    sidebarToggle.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (
+                appSidebar &&
+                appSidebar.classList.contains(
+                    "open"
+                )
+            ) {
+
+                closeSidebar();
+
+            } else {
+
+                openSidebar();
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   SIDEBAR CLOSE BUTTON
+========================================================= */
+
+if (sidebarClose) {
+
+    sidebarClose.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+
+            closeSidebar();
+        }
+    );
+}
+
+
+/* =========================================================
+   SIDEBAR OVERLAY
+========================================================= */
+
+if (sidebarOverlay) {
+
+    sidebarOverlay.addEventListener(
+        "click",
+        function() {
+
+            closeSidebar();
+        }
+    );
+}
+
+
+/* =========================================================
+   ACTIVE SIDEBAR ITEM
+========================================================= */
+
+function setActiveSidebarItem(
+    sectionName
+) {
+
+    sidebarItems.forEach(
+        function(item) {
+
+            const itemSection =
+                item.dataset.section;
+
+            item.classList.toggle(
+                "active",
+                itemSection === sectionName
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   SCROLL TO SECTION
+========================================================= */
+
+function scrollToSection(
+    element,
+    behavior = "smooth"
+) {
+
+    if (!element) {
+        return;
+    }
+
+    element.scrollIntoView({
+        behavior: behavior,
+        block: "start"
+    });
+}
+
+
+/* =========================================================
+   SIDEBAR NAVIGATION
+========================================================= */
+
+sidebarItems.forEach(
+    function(item) {
+
+        item.addEventListener(
+            "click",
+            function(event) {
+
+                event.preventDefault();
+
+                const section =
+                    item.dataset.section;
+
+
+                setActiveSidebarItem(
+                    section
+                );
+
+
+                /* -----------------------------------------
+                   DASHBOARD
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "dashboard"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   VERIFY
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "verify"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    scrollToSection(
+                        verifySection
+                    );
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   LIVE FEED
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "live"
+                ) {
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    openLiveFeed();
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   EXPLAINABLE AI
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "explain"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    scrollToSection(
+                        explainSection
+                    );
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   ANALYTICS
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "analytics"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    scrollToSection(
+                        analyticsSection
+                    );
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   HISTORY
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "history"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    scrollToSection(
+                        historySection
+                    );
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   CHAT
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "chat"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSettingsPanel();
+
+                    closeSidebar();
+
+                    openChat();
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   ADVANCED SETTINGS
+                ----------------------------------------- */
+
+                if (
+                    section ===
+                    "settings"
+                ) {
+
+                    closeLiveFeedPanel();
+
+                    closeSidebar();
+
+                    openSettingsPanel();
+
+                    return;
+                }
+
+            }
+        );
+    }
+);
+
+
+/* =========================================================
+   QUICK CARDS
+========================================================= */
+
+const quickCards =
+    document.querySelectorAll(
+        ".quick-card"
+    );
+
+
+quickCards.forEach(
+    function(card) {
+
+        card.addEventListener(
+            "click",
+            function(event) {
+
+                event.preventDefault();
+
+                const section =
+                    card.dataset.section;
+
+
+                setActiveSidebarItem(
+                    section
+                );
+
+
+                if (
+                    section ===
+                    "verify"
+                ) {
+
+                    scrollToSection(
+                        verifySection
+                    );
+
+                } else if (
+                    section ===
+                    "live"
+                ) {
+
+                    openLiveFeed();
+
+                } else if (
+                    section ===
+                    "analytics"
+                ) {
+
+                    scrollToSection(
+                        analyticsSection
+                    );
+
+                } else if (
+                    section ===
+                    "history"
+                ) {
+
+                    scrollToSection(
+                        historySection
+                    );
+                }
+
+            }
+        );
+    }
+);
+
+
+/* =========================================================
    CHARACTER COUNTER
 ========================================================= */
 
@@ -158,12 +667,14 @@ if (headlineInput) {
 
     headlineInput.addEventListener(
         "input",
-        function () {
+        function() {
 
             const length =
                 headlineInput.value.length;
 
+
             if (charCount) {
+
                 charCount.textContent =
                     `${length} / 1000`;
             }
@@ -180,7 +691,7 @@ if (clearBtn) {
 
     clearBtn.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
 
@@ -189,10 +700,13 @@ if (clearBtn) {
             currentHeadline = "";
             currentChatContext = null;
 
+
             if (charCount) {
+
                 charCount.textContent =
                     "0 / 1000";
             }
+
 
             hide(resultBox);
             hide(explainResult);
@@ -210,13 +724,15 @@ if (verifyForm) {
 
     verifyForm.addEventListener(
         "submit",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
             event.stopPropagation();
 
+
             const headline =
                 headlineInput.value.trim();
+
 
             if (!headline) {
 
@@ -225,30 +741,37 @@ if (verifyForm) {
                 return;
             }
 
-            currentHeadline = headline;
+
+            currentHeadline =
+                headline;
+
 
             hide(resultBox);
             hide(explainResult);
             hide(explainError);
 
-            verifyBtn.disabled = true;
+
+            verifyBtn.disabled =
+                true;
+
 
             if (verifyBtnText) {
+
                 verifyBtnText.textContent =
                     "Verifying...";
             }
 
+
             show(verifySpinner);
             show(verifyLoading);
 
+
             resetVerificationSteps();
 
-            /*
-             * Animation starts immediately while
-             * backend verification runs.
-             */
+
             const animationPromise =
                 runVerificationAnimation();
+
 
             try {
 
@@ -264,7 +787,12 @@ if (verifyForm) {
                             },
 
                             body: JSON.stringify({
-                                headline: headline
+
+                                headline:
+                                    headline,
+
+                                advanced_settings:
+                                    getAdvancedSettings()
                             })
                         }
                     );
@@ -283,37 +811,42 @@ if (verifyForm) {
                 }
 
 
-                /*
-                 * Don't show the result until
-                 * all five animations complete.
-                 */
                 await animationPromise;
 
 
-                displayVerificationResult(data);
+                displayVerificationResult(
+                    data
+                );
+
 
                 currentChatContext =
-                    buildChatContext(data);
+                    buildChatContext(
+                        data
+                    );
+
 
                 loadStats();
                 loadHistory();
 
 
                 setTimeout(
-                    function () {
+                    function() {
 
                         if (resultBox) {
 
                             resultBox.scrollIntoView({
-                                behavior: "smooth",
-                                block: "nearest"
-                            });
+                                behavior:
+                                    "smooth",
 
+                                block:
+                                    "nearest"
+                            });
                         }
 
                     },
                     150
                 );
+
 
             } catch (error) {
 
@@ -322,23 +855,32 @@ if (verifyForm) {
                     error
                 );
 
+
                 try {
+
                     await animationPromise;
+
                 } catch (_) {}
+
 
                 showErrorResult(
                     error.message ||
                     "Something went wrong."
                 );
 
+
             } finally {
 
-                verifyBtn.disabled = false;
+                verifyBtn.disabled =
+                    false;
+
 
                 if (verifyBtnText) {
+
                     verifyBtnText.textContent =
                         "Verify Headline";
                 }
+
 
                 hide(verifySpinner);
                 hide(verifyLoading);
@@ -356,21 +898,26 @@ if (verifyForm) {
 function resetVerificationSteps() {
 
     verificationSteps.forEach(
-        function (step) {
+        function(step) {
 
             step.classList.remove(
                 "active",
                 "done"
             );
 
+
             const status =
                 step.querySelector(
                     ".step-status"
                 );
 
+
             if (status) {
-                status.textContent = "";
+
+                status.textContent =
+                    "";
             }
+
         }
     );
 
@@ -420,7 +967,9 @@ async function runVerificationAnimation() {
             verificationSteps[i];
 
 
-        step.classList.add("active");
+        step.classList.add(
+            "active"
+        );
 
 
         if (loadingTitle) {
@@ -440,10 +989,13 @@ async function runVerificationAnimation() {
         await sleep(700);
 
 
-        step.classList.remove("active");
+        step.classList.remove(
+            "active"
+        );
 
-        step.classList.add("done");
-
+        step.classList.add(
+            "done"
+        );
     }
 
 
@@ -469,7 +1021,9 @@ async function runVerificationAnimation() {
    DISPLAY RESULT
 ========================================================= */
 
-function displayVerificationResult(data) {
+function displayVerificationResult(
+    data
+) {
 
     if (!resultBox) {
         return;
@@ -479,7 +1033,8 @@ function displayVerificationResult(data) {
     resultBox.classList.remove(
         "real",
         "fake",
-        "misleading"
+        "misleading",
+        "error"
     );
 
 
@@ -513,7 +1068,8 @@ function displayVerificationResult(data) {
         data.confidence;
 
 
-    let scoreNumber = "—";
+    let scoreNumber =
+        "—";
 
 
     if (
@@ -537,13 +1093,13 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       VERDICT
-    ====================================================== */
+    /* VERDICT */
 
     if (verdict === "REAL") {
 
-        resultBox.classList.add("real");
+        resultBox.classList.add(
+            "real"
+        );
 
         verdictText.textContent =
             "REAL NEWS";
@@ -551,15 +1107,21 @@ function displayVerificationResult(data) {
         verdictIcon.textContent =
             "✓";
 
-    } else if (verdict === "FAKE") {
 
-        resultBox.classList.add("fake");
+    } else if (
+        verdict === "FAKE"
+    ) {
+
+        resultBox.classList.add(
+            "fake"
+        );
 
         verdictText.textContent =
             "FAKE NEWS";
 
         verdictIcon.textContent =
             "✕";
+
 
     } else if (
         verdict === "MISLEADING"
@@ -575,6 +1137,7 @@ function displayVerificationResult(data) {
         verdictIcon.textContent =
             "!";
 
+
     } else {
 
         verdictText.textContent =
@@ -585,9 +1148,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       BASIC DATA
-    ====================================================== */
+    /* BASIC DATA */
 
     if (resultHeadline) {
 
@@ -644,9 +1205,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       PUBLISHER
-    ====================================================== */
+    /* PUBLISHER */
 
     if (data.publisher) {
 
@@ -664,9 +1223,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       RATING
-    ====================================================== */
+    /* RATING */
 
     if (data.rating) {
 
@@ -684,9 +1241,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       REASON
-    ====================================================== */
+    /* REASON */
 
     const reason =
         data.reason ||
@@ -711,9 +1266,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       SOURCES
-    ====================================================== */
+    /* SOURCES */
 
     if (
         Array.isArray(data.sources) &&
@@ -722,11 +1275,12 @@ function displayVerificationResult(data) {
 
         show(sourcesBox);
 
-        sourcesList.innerHTML = "";
+        sourcesList.innerHTML =
+            "";
 
 
         data.sources.forEach(
-            function (source) {
+            function(source) {
 
                 const li =
                     document.createElement(
@@ -736,7 +1290,8 @@ function displayVerificationResult(data) {
 
                 if (
                     source &&
-                    typeof source === "object"
+                    typeof source ===
+                    "object"
                 ) {
 
                     const title =
@@ -759,7 +1314,9 @@ function displayVerificationResult(data) {
                 }
 
 
-                sourcesList.appendChild(li);
+                sourcesList.appendChild(
+                    li
+                );
             }
         );
 
@@ -769,9 +1326,7 @@ function displayVerificationResult(data) {
     }
 
 
-    /* =====================================================
-       VERIFIED / DISPUTED
-    ====================================================== */
+    /* VERIFIED / DISPUTED */
 
     renderInsightList(
         verifiedBox,
@@ -818,11 +1373,12 @@ function renderInsightList(
     }
 
 
-    list.innerHTML = "";
+    list.innerHTML =
+        "";
 
 
     values.forEach(
-        function (value) {
+        function(value) {
 
             const li =
                 document.createElement(
@@ -832,7 +1388,8 @@ function renderInsightList(
 
             if (
                 value &&
-                typeof value === "object"
+                typeof value ===
+                "object"
             ) {
 
                 li.textContent =
@@ -850,7 +1407,9 @@ function renderInsightList(
             }
 
 
-            list.appendChild(li);
+            list.appendChild(
+                li
+            );
         }
     );
 
@@ -863,7 +1422,9 @@ function renderInsightList(
    ERROR
 ========================================================= */
 
-function showErrorResult(message) {
+function showErrorResult(
+    message
+) {
 
     if (!resultBox) {
         return;
@@ -877,11 +1438,17 @@ function showErrorResult(message) {
     );
 
 
+    resultBox.classList.add(
+        "error"
+    );
+
+
     show(resultBox);
 
 
     verdictText.textContent =
         "ERROR";
+
 
     verdictIcon.textContent =
         "!";
@@ -961,7 +1528,9 @@ function formatMode(mode) {
    FORMAT CONFIDENCE
 ========================================================= */
 
-function formatConfidence(value) {
+function formatConfidence(
+    value
+) {
 
     let number =
         Number(value);
@@ -990,7 +1559,9 @@ function formatConfidence(value) {
    CHAT CONTEXT
 ========================================================= */
 
-function buildChatContext(data) {
+function buildChatContext(
+    data
+) {
 
     let context =
         `The user just checked a news headline.
@@ -1044,7 +1615,7 @@ if (explainBtn) {
 
     explainBtn.addEventListener(
         "click",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
             event.stopPropagation();
@@ -1065,7 +1636,9 @@ if (explainBtn) {
 
             show(explainLoading);
 
-            explainBtn.disabled = true;
+
+            explainBtn.disabled =
+                true;
 
 
             try {
@@ -1112,7 +1685,10 @@ if (explainBtn) {
                 }
 
 
-                renderExplanation(data);
+                renderExplanation(
+                    data
+                );
+
 
             } catch (error) {
 
@@ -1121,9 +1697,11 @@ if (explainBtn) {
                     error
                 );
 
+
                 showExplainError(
                     error.message
                 );
+
 
             } finally {
 
@@ -1142,14 +1720,17 @@ if (explainBtn) {
    EXPLANATION RENDER
 ========================================================= */
 
-function renderExplanation(data) {
+function renderExplanation(
+    data
+) {
 
     if (!wordImportance) {
         return;
     }
 
 
-    wordImportance.innerHTML = "";
+    wordImportance.innerHTML =
+        "";
 
 
     const words =
@@ -1170,7 +1751,7 @@ function renderExplanation(data) {
 
 
     words.forEach(
-        function (item) {
+        function(item) {
 
             const word =
                 document.createElement(
@@ -1196,6 +1777,7 @@ function renderExplanation(data) {
                     "span"
                 );
 
+
             wordText.textContent =
                 item.word ||
                 "";
@@ -1207,7 +1789,9 @@ function renderExplanation(data) {
                 );
 
 
-            if (Number.isNaN(weight)) {
+            if (
+                Number.isNaN(weight)
+            ) {
 
                 weightText.textContent =
                     "Weight unavailable";
@@ -1225,11 +1809,17 @@ function renderExplanation(data) {
             }
 
 
-            word.appendChild(wordText);
+            word.appendChild(
+                wordText
+            );
 
-            word.appendChild(weightText);
+            word.appendChild(
+                weightText
+            );
 
-            wordImportance.appendChild(word);
+            wordImportance.appendChild(
+                word
+            );
         }
     );
 
@@ -1242,7 +1832,9 @@ function renderExplanation(data) {
    EXPLAIN ERROR
 ========================================================= */
 
-function showExplainError(message) {
+function showExplainError(
+    message
+) {
 
     if (!explainError) {
         return;
@@ -1259,6 +1851,33 @@ function showExplainError(message) {
 
 
 /* =========================================================
+   OPEN CHAT
+========================================================= */
+
+function openChat() {
+
+    if (!chatWindow) {
+        return;
+    }
+
+
+    show(chatWindow);
+
+
+    setTimeout(
+        function() {
+
+            if (chatInput) {
+                chatInput.focus();
+            }
+
+        },
+        100
+    );
+}
+
+
+/* =========================================================
    CHAT OPEN / CLOSE
 ========================================================= */
 
@@ -1266,7 +1885,7 @@ if (chatToggle) {
 
     chatToggle.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
             event.stopPropagation();
@@ -1288,8 +1907,13 @@ if (chatToggle) {
                 )
             ) {
 
+                setActiveSidebarItem(
+                    "chat"
+                );
+
+
                 setTimeout(
-                    function () {
+                    function() {
 
                         if (chatInput) {
                             chatInput.focus();
@@ -1309,7 +1933,7 @@ if (chatClose) {
 
     chatClose.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
             event.stopPropagation();
@@ -1371,7 +1995,7 @@ if (chatForm) {
 
     chatForm.addEventListener(
         "submit",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
             event.stopPropagation();
@@ -1392,9 +2016,12 @@ if (chatForm) {
             );
 
 
-            chatInput.value = "";
+            chatInput.value =
+                "";
 
-            chatInput.disabled = true;
+
+            chatInput.disabled =
+                true;
 
 
             addChatMessage(
@@ -1425,7 +2052,8 @@ if (chatForm) {
                                 messages: [
 
                                     {
-                                        role: "user",
+                                        role:
+                                            "user",
 
                                         content:
                                             message
@@ -1519,6 +2147,7 @@ async function loadStats() {
 
 
         if (!response.ok) {
+
             throw new Error(
                 data.error ||
                 "Could not load stats."
@@ -1560,18 +2189,21 @@ async function loadStats() {
 
 
         if (statTotal) {
+
             statTotal.textContent =
                 total;
         }
 
 
         if (statReal) {
+
             statReal.textContent =
                 real;
         }
 
 
         if (statFake) {
+
             statFake.textContent =
                 fake;
         }
@@ -1654,14 +2286,17 @@ async function loadLiveFeed() {
    RENDER LIVE FEED
 ========================================================= */
 
-function renderLiveFeed(results) {
+function renderLiveFeed(
+    results
+) {
 
     if (!liveFeed) {
         return;
     }
 
 
-    liveFeed.innerHTML = "";
+    liveFeed.innerHTML =
+        "";
 
 
     if (
@@ -1680,12 +2315,13 @@ function renderLiveFeed(results) {
 
 
     results.forEach(
-        function (item) {
+        function(item) {
 
             const row =
                 document.createElement(
                     "div"
                 );
+
 
             row.className =
                 "feed-item";
@@ -1696,6 +2332,7 @@ function renderLiveFeed(results) {
                     "div"
                 );
 
+
             top.className =
                 "feed-top";
 
@@ -1704,6 +2341,7 @@ function renderLiveFeed(results) {
                 document.createElement(
                     "div"
                 );
+
 
             title.className =
                 "feed-title";
@@ -1744,15 +2382,24 @@ function renderLiveFeed(results) {
                 verdict;
 
 
-            top.appendChild(title);
-            top.appendChild(badge);
+            top.appendChild(
+                title
+            );
 
-            row.appendChild(top);
+            top.appendChild(
+                badge
+            );
+
+            row.appendChild(
+                top
+            );
 
 
             if (
-                item.confidence !== undefined &&
-                item.confidence !== null
+                item.confidence !==
+                    undefined &&
+                item.confidence !==
+                    null
             ) {
 
                 const meta =
@@ -1772,11 +2419,15 @@ function renderLiveFeed(results) {
                     );
 
 
-                row.appendChild(meta);
+                row.appendChild(
+                    meta
+                );
             }
 
 
-            liveFeed.appendChild(row);
+            liveFeed.appendChild(
+                row
+            );
         }
     );
 }
@@ -1849,14 +2500,17 @@ async function loadHistory() {
    RENDER HISTORY
 ========================================================= */
 
-function renderHistory(history) {
+function renderHistory(
+    history
+) {
 
     if (!historyList) {
         return;
     }
 
 
-    historyList.innerHTML = "";
+    historyList.innerHTML =
+        "";
 
 
     if (
@@ -1875,12 +2529,13 @@ function renderHistory(history) {
 
 
     history.forEach(
-        function (item) {
+        function(item) {
 
             const row =
                 document.createElement(
                     "div"
                 );
+
 
             row.className =
                 "history-item";
@@ -1891,6 +2546,7 @@ function renderHistory(history) {
                     "div"
                 );
 
+
             head.className =
                 "history-head";
 
@@ -1899,6 +2555,7 @@ function renderHistory(history) {
                 document.createElement(
                     "div"
                 );
+
 
             headline.className =
                 "history-headline";
@@ -1913,6 +2570,7 @@ function renderHistory(history) {
                 document.createElement(
                     "div"
                 );
+
 
             actions.className =
                 "history-actions";
@@ -1956,17 +2614,22 @@ function renderHistory(history) {
             deleteButton.type =
                 "button";
 
+
             deleteButton.className =
                 "delete-history-btn";
 
+
             deleteButton.textContent =
                 "Delete";
+
 
             deleteButton.title =
                 "Delete this history item";
 
 
-            if (item.id !== undefined) {
+            if (
+                item.id !== undefined
+            ) {
 
                 deleteButton.dataset.id =
                     item.id;
@@ -1975,7 +2638,7 @@ function renderHistory(history) {
 
             deleteButton.addEventListener(
                 "click",
-                async function (event) {
+                async function(event) {
 
                     event.preventDefault();
                     event.stopPropagation();
@@ -2008,6 +2671,7 @@ function renderHistory(history) {
 
                     deleteButton.disabled =
                         true;
+
 
                     deleteButton.textContent =
                         "Deleting...";
@@ -2069,6 +2733,7 @@ function renderHistory(history) {
                         deleteButton.disabled =
                             false;
 
+
                         deleteButton.textContent =
                             "Delete";
 
@@ -2087,6 +2752,7 @@ function renderHistory(history) {
                 verdictElement
             );
 
+
             actions.appendChild(
                 deleteButton
             );
@@ -2095,6 +2761,7 @@ function renderHistory(history) {
             head.appendChild(
                 headline
             );
+
 
             head.appendChild(
                 actions
@@ -2110,6 +2777,7 @@ function renderHistory(history) {
                 document.createElement(
                     "div"
                 );
+
 
             meta.className =
                 "history-meta";
@@ -2131,7 +2799,8 @@ function renderHistory(history) {
                 formatMode(mode) +
                 (
                     timestamp
-                        ? " • " + timestamp
+                        ? " • " +
+                          timestamp
                         : ""
                 );
 
@@ -2150,10 +2819,12 @@ function renderHistory(history) {
 
 
 /* =========================================================
-   LIVE FEED SIDEBAR
+   OPEN LIVE FEED
 ========================================================= */
 
 function openLiveFeed() {
+
+    closeSettingsPanel();
 
     show(liveFeedPanel);
 
@@ -2174,9 +2845,20 @@ function openLiveFeed() {
     }
 
 
+    setActiveSidebarItem(
+        "live"
+    );
+
+
     loadLiveFeed();
+
+    startLiveFeedAutoRefresh();
 }
 
+
+/* =========================================================
+   CLOSE LIVE FEED
+========================================================= */
 
 function closeLiveFeedPanel() {
 
@@ -2197,14 +2879,34 @@ function closeLiveFeedPanel() {
             "active"
         );
     }
+
+
+    if (
+        !appSidebar ||
+        !appSidebar.classList.contains(
+            "open"
+        )
+    ) {
+
+        setActiveSidebarItem(
+            "verify"
+        );
+    }
+
+
+    stopLiveFeedAutoRefresh();
 }
 
+
+/* =========================================================
+   LIVE FEED TOP BUTTON
+========================================================= */
 
 if (liveFeedToggle) {
 
     liveFeedToggle.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
 
@@ -2214,11 +2916,15 @@ if (liveFeedToggle) {
 }
 
 
+/* =========================================================
+   CLOSE LIVE FEED
+========================================================= */
+
 if (closeLiveFeed) {
 
     closeLiveFeed.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
 
@@ -2228,20 +2934,29 @@ if (closeLiveFeed) {
 }
 
 
+/* =========================================================
+   VERIFY TOP BUTTON
+========================================================= */
+
 if (verifyNavBtn) {
 
     verifyNavBtn.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
 
             closeLiveFeedPanel();
 
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
+            closeSettingsPanel();
+
+            setActiveSidebarItem(
+                "verify"
+            );
+
+            scrollToSection(
+                verifySection
+            );
         }
     );
 }
@@ -2255,7 +2970,7 @@ if (refreshFeedBtn) {
 
     refreshFeedBtn.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             event.preventDefault();
 
@@ -2266,12 +2981,513 @@ if (refreshFeedBtn) {
 
 
 /* =========================================================
+   HISTORY REFRESH
+========================================================= */
+
+if (historyRefreshBtn) {
+
+    historyRefreshBtn.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+
+            loadHistory();
+            loadStats();
+        }
+    );
+}
+
+
+/* =========================================================
+   ADVANCED SETTINGS — OPEN / CLOSE
+========================================================= */
+
+function openSettingsPanel() {
+
+    hide(chatWindow);
+
+    hide(liveFeedPanel);
+
+    if (liveFeedToggle) {
+
+        liveFeedToggle.classList.remove(
+            "active"
+        );
+    }
+
+
+    show(settingsPanel);
+
+
+    if (settingsToggle) {
+
+        settingsToggle.classList.add(
+            "active"
+        );
+    }
+
+
+    setActiveSidebarItem(
+        "settings"
+    );
+}
+
+
+function closeSettingsPanel() {
+
+    hide(settingsPanel);
+
+
+    if (settingsToggle) {
+
+        settingsToggle.classList.remove(
+            "active"
+        );
+    }
+}
+
+
+if (settingsToggle) {
+
+    settingsToggle.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+
+            if (
+                settingsPanel &&
+                !settingsPanel.classList.contains(
+                    "hidden"
+                )
+            ) {
+
+                closeSettingsPanel();
+
+            } else {
+
+                openSettingsPanel();
+            }
+        }
+    );
+}
+
+
+if (closeSettings) {
+
+    closeSettings.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+
+            closeSettingsPanel();
+        }
+    );
+}
+
+
+/* =========================================================
+   ADVANCED SETTINGS — LAYER TOGGLES
+========================================================= */
+
+function wireLayerToggle(
+    checkbox,
+    dot
+) {
+
+    if (!checkbox || !dot) {
+        return;
+    }
+
+    checkbox.addEventListener(
+        "change",
+        function() {
+
+            dot.classList.toggle(
+                "on",
+                checkbox.checked
+            );
+
+            dot.classList.toggle(
+                "off",
+                !checkbox.checked
+            );
+        }
+    );
+}
+
+
+wireLayerToggle(layerLive, dotLayerLive);
+wireLayerToggle(layerFactcheck, dotLayerFactcheck);
+wireLayerToggle(layerRedflag, dotLayerRedflag);
+wireLayerToggle(layerLlm, dotLayerLlm);
+wireLayerToggle(layerModel, dotLayerModel);
+
+
+/* =========================================================
+   ADVANCED SETTINGS — THRESHOLD SLIDER
+========================================================= */
+
+if (thresholdSlider && thresholdValue) {
+
+    thresholdSlider.addEventListener(
+        "input",
+        function() {
+
+            thresholdValue.textContent =
+                thresholdSlider.value +
+                "%";
+        }
+    );
+}
+
+
+/* =========================================================
+   ADVANCED SETTINGS — AUTO-REFRESH LIVE FEED
+========================================================= */
+
+function startLiveFeedAutoRefresh() {
+
+    stopLiveFeedAutoRefresh();
+
+    const enabled =
+        !autoRefreshFeed ||
+        autoRefreshFeed.checked;
+
+    if (!enabled) {
+        return;
+    }
+
+    liveFeedAutoRefreshTimer =
+        setInterval(
+            function() {
+
+                if (
+                    liveFeedPanel &&
+                    !liveFeedPanel.classList.contains(
+                        "hidden"
+                    )
+                ) {
+
+                    loadLiveFeed();
+                }
+
+            },
+            30000
+        );
+}
+
+
+function stopLiveFeedAutoRefresh() {
+
+    if (liveFeedAutoRefreshTimer) {
+
+        clearInterval(
+            liveFeedAutoRefreshTimer
+        );
+
+        liveFeedAutoRefreshTimer =
+            null;
+    }
+}
+
+
+if (autoRefreshFeed) {
+
+    autoRefreshFeed.addEventListener(
+        "change",
+        function() {
+
+            if (
+                liveFeedPanel &&
+                !liveFeedPanel.classList.contains(
+                    "hidden"
+                )
+            ) {
+
+                startLiveFeedAutoRefresh();
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   ADVANCED SETTINGS — COLLECT CURRENT VALUES
+========================================================= */
+
+function getAdvancedSettings() {
+
+    return {
+
+        layers: {
+
+            live_verification:
+                layerLive
+                    ? layerLive.checked
+                    : true,
+
+            fact_check:
+                layerFactcheck
+                    ? layerFactcheck.checked
+                    : true,
+
+            red_flag:
+                layerRedflag
+                    ? layerRedflag.checked
+                    : true,
+
+            llm_reasoning:
+                layerLlm
+                    ? layerLlm.checked
+                    : false,
+
+            model_fallback:
+                layerModel
+                    ? layerModel.checked
+                    : true
+        },
+
+        fallback_model:
+            fallbackModel
+                ? fallbackModel.value
+                : "auto",
+
+        llm_provider:
+            llmProvider
+                ? llmProvider.value
+                : "gemini",
+
+        explain_method:
+            settingsExplainMethod
+                ? settingsExplainMethod.value
+                : "lime",
+
+        confidence_threshold:
+            thresholdSlider
+                ? Number(thresholdSlider.value)
+                : 60
+    };
+}
+
+
+/* =========================================================
+   ADVANCED SETTINGS — RESET
+========================================================= */
+
+if (resetSettingsBtn) {
+
+    resetSettingsBtn.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+
+
+            if (layerLive) {
+                layerLive.checked = true;
+            }
+
+            if (layerFactcheck) {
+                layerFactcheck.checked = true;
+            }
+
+            if (layerRedflag) {
+                layerRedflag.checked = true;
+            }
+
+            if (layerLlm) {
+                layerLlm.checked = false;
+            }
+
+            if (layerModel) {
+                layerModel.checked = true;
+            }
+
+
+            [
+                [layerLive, dotLayerLive],
+                [layerFactcheck, dotLayerFactcheck],
+                [layerRedflag, dotLayerRedflag],
+                [layerLlm, dotLayerLlm],
+                [layerModel, dotLayerModel]
+            ].forEach(
+                function(pair) {
+
+                    const checkbox = pair[0];
+                    const dot = pair[1];
+
+                    if (!checkbox || !dot) {
+                        return;
+                    }
+
+                    dot.classList.toggle(
+                        "on",
+                        checkbox.checked
+                    );
+
+                    dot.classList.toggle(
+                        "off",
+                        !checkbox.checked
+                    );
+                }
+            );
+
+
+            if (fallbackModel) {
+                fallbackModel.value = "auto";
+            }
+
+            if (llmProvider) {
+                llmProvider.value = "gemini";
+            }
+
+            if (settingsExplainMethod) {
+                settingsExplainMethod.value = "lime";
+            }
+
+            if (thresholdSlider) {
+                thresholdSlider.value = 60;
+            }
+
+            if (thresholdValue) {
+                thresholdValue.textContent = "60%";
+            }
+
+            if (autoRefreshFeed) {
+                autoRefreshFeed.checked = true;
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   ESC KEY
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key ===
+            "Escape"
+        ) {
+
+            closeSidebar();
+
+            closeLiveFeedPanel();
+
+            closeSettingsPanel();
+
+            hide(chatWindow);
+        }
+    }
+);
+
+
+/* =========================================================
+   SCROLL ACTIVE SECTION
+========================================================= */
+
+const sectionObserver =
+    new IntersectionObserver(
+        function(entries) {
+
+            let visibleEntry =
+                null;
+
+
+            entries.forEach(
+                function(entry) {
+
+                    if (
+                        entry.isIntersecting
+                    ) {
+
+                        visibleEntry =
+                            entry;
+                    }
+                }
+            );
+
+
+            if (!visibleEntry) {
+                return;
+            }
+
+
+            const id =
+                visibleEntry.target.id;
+
+
+            const sectionMap = {
+
+                dashboardSection:
+                    "dashboard",
+
+                verifySection:
+                    "verify",
+
+                explainSection:
+                    "explain",
+
+                analyticsSection:
+                    "analytics",
+
+                historySection:
+                    "history"
+            };
+
+
+            if (
+                sectionMap[id]
+            ) {
+
+                setActiveSidebarItem(
+                    sectionMap[id]
+                );
+            }
+
+        },
+        {
+            root: null,
+
+            threshold: 0.25
+        }
+    );
+
+
+[
+    dashboardSection,
+    verifySection,
+    explainSection,
+    analyticsSection,
+    historySection
+]
+.forEach(
+    function(section) {
+
+        if (section) {
+
+            sectionObserver.observe(
+                section
+            );
+        }
+    }
+);
+
+
+/* =========================================================
    INITIAL LOAD
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function () {
+    function() {
 
         loadStats();
 
@@ -2279,9 +3495,13 @@ document.addEventListener(
 
         /*
          * Feed is loaded in background.
-         * It is displayed only when LIVE FEED
-         * button is opened.
+         * It opens only when requested.
          */
         loadLiveFeed();
+
+
+        setActiveSidebarItem(
+            "dashboard"
+        );
     }
 );

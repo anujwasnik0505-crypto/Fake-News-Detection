@@ -15,20 +15,276 @@
 <body>
 
 <!-- =========================================================
+     SIDEBAR OVERLAY
+========================================================= -->
+
+<div
+    id="sidebarOverlay"
+    class="sidebar-overlay"
+></div>
+
+
+<!-- =========================================================
+     LEFT SIDEBAR
+========================================================= -->
+
+<aside
+    id="appSidebar"
+    class="app-sidebar"
+    aria-label="Main navigation"
+>
+
+    <div class="sidebar-top">
+
+        <div class="sidebar-brand">
+
+            <div class="sidebar-brand-logo">
+                V
+            </div>
+
+            <div>
+                <strong>
+                    VeriQuest
+                </strong>
+
+                <span>
+                    AI News Verification
+                </span>
+            </div>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="sidebarClose"
+            class="sidebar-close"
+            aria-label="Close sidebar"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <div class="sidebar-divider"></div>
+
+
+    <nav class="sidebar-nav">
+
+        <button
+            type="button"
+            class="sidebar-item active"
+            data-section="dashboard"
+        >
+
+            <span class="sidebar-item-icon">
+                ⌂
+            </span>
+
+            <span class="sidebar-item-text">
+                Dashboard
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="verify"
+        >
+
+            <span class="sidebar-item-icon">
+                ⌕
+            </span>
+
+            <span class="sidebar-item-text">
+                Verify News
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="live"
+        >
+
+            <span class="sidebar-item-icon">
+                ◉
+            </span>
+
+            <span class="sidebar-item-text">
+                Live News Feed
+            </span>
+
+            <span class="sidebar-live-dot"></span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="explain"
+        >
+
+            <span class="sidebar-item-icon">
+                AI
+            </span>
+
+            <span class="sidebar-item-text">
+                Explainable AI
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="analytics"
+        >
+
+            <span class="sidebar-item-icon">
+                ▥
+            </span>
+
+            <span class="sidebar-item-text">
+                Analytics
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="history"
+        >
+
+            <span class="sidebar-item-icon">
+                ◷
+            </span>
+
+            <span class="sidebar-item-text">
+                History
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="chat"
+        >
+
+            <span class="sidebar-item-icon">
+                ◌
+            </span>
+
+            <span class="sidebar-item-text">
+                VeriQuest AI
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="settings"
+        >
+
+            <span class="sidebar-item-icon">
+                ⚙
+            </span>
+
+            <span class="sidebar-item-text">
+                Advanced Settings
+            </span>
+
+        </button>
+
+    </nav>
+
+
+    <div class="sidebar-bottom">
+
+        <div class="sidebar-status">
+
+            <span class="sidebar-status-dot"></span>
+
+            <div>
+                <strong>
+                    AI System Online
+                </strong>
+
+                <span>
+                    Verification services active
+                </span>
+            </div>
+
+        </div>
+
+
+        <div class="sidebar-version">
+            VERIQUEST v1.0
+        </div>
+
+    </div>
+
+</aside>
+
+
+<!-- =========================================================
      HEADER
 ========================================================= -->
 
 <header class="topbar">
+
     <div class="container nav">
 
-        <div class="brand">
-            <div class="brand-logo">V</div>
+        <div class="nav-left">
 
-            <div>
-                <h1>VeriQuest</h1>
-                <p>AI-Powered News Verification</p>
+            <button
+                type="button"
+                id="sidebarToggle"
+                class="hamburger-btn"
+                aria-label="Open navigation menu"
+                aria-expanded="false"
+            >
+
+                <span></span>
+                <span></span>
+                <span></span>
+
+            </button>
+
+
+            <div class="brand">
+
+                <div class="brand-logo">
+                    V
+                </div>
+
+                <div>
+                    <h1>
+                        VeriQuest
+                    </h1>
+
+                    <p>
+                        AI-Powered News Verification
+                    </p>
+                </div>
+
             </div>
+
         </div>
+
 
         <div class="top-actions">
 
@@ -40,6 +296,7 @@
                 VERIFY
             </button>
 
+
             <button
                 type="button"
                 id="liveFeedToggle"
@@ -48,14 +305,29 @@
                 LIVE FEED
             </button>
 
+
+            <button
+                type="button"
+                id="settingsToggle"
+                class="nav-tab"
+                aria-label="Open advanced settings"
+            >
+                ⚙ SETTINGS
+            </button>
+
+
             <div class="status-pill">
+
                 <span class="status-dot"></span>
+
                 AI Verification Active
+
             </div>
 
         </div>
 
     </div>
+
 </header>
 
 
@@ -65,23 +337,123 @@
 
 <main class="container">
 
-    <!-- HERO -->
 
-    <section class="hero">
+    <!-- =====================================================
+         DASHBOARD
+    ====================================================== -->
 
-        <div class="hero-badge">
-            5-LAYER FAKE NEWS DETECTION
-        </div>
+    <section
+        id="dashboardSection"
+        class="page-section"
+    >
 
-        <h2>
-            Verify before you believe.
-        </h2>
+        <section class="hero">
 
-        <p>
-            Analyze news headlines using trusted sources,
-            fact-checking databases, AI reasoning and
-            machine learning.
-        </p>
+            <div class="hero-badge">
+                5-LAYER FAKE NEWS DETECTION
+            </div>
+
+            <h2>
+                Verify before you believe.
+            </h2>
+
+            <p>
+                Analyze news headlines using trusted sources,
+                fact-checking databases, AI reasoning and
+                machine learning.
+            </p>
+
+        </section>
+
+
+        <!-- DASHBOARD QUICK CARDS -->
+
+        <section class="quick-grid">
+
+            <button
+                type="button"
+                class="quick-card"
+                data-section="verify"
+            >
+
+                <span class="quick-icon">
+                    ⌕
+                </span>
+
+                <span class="quick-title">
+                    Verify News
+                </span>
+
+                <span class="quick-description">
+                    Check a headline using the 5-layer system.
+                </span>
+
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-card"
+                data-section="live"
+            >
+
+                <span class="quick-icon">
+                    ◉
+                </span>
+
+                <span class="quick-title">
+                    Live Feed
+                </span>
+
+                <span class="quick-description">
+                    View latest headlines classified by the model.
+                </span>
+
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-card"
+                data-section="analytics"
+            >
+
+                <span class="quick-icon">
+                    ▥
+                </span>
+
+                <span class="quick-title">
+                    Analytics
+                </span>
+
+                <span class="quick-description">
+                    View your verification statistics.
+                </span>
+
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-card"
+                data-section="history"
+            >
+
+                <span class="quick-icon">
+                    ◷
+                </span>
+
+                <span class="quick-title">
+                    History
+                </span>
+
+                <span class="quick-description">
+                    Review your recent verification checks.
+                </span>
+
+            </button>
+
+        </section>
 
     </section>
 
@@ -90,7 +462,10 @@
          VERIFY CARD
     ====================================================== -->
 
-    <section class="card verify-card">
+    <section
+        id="verifySection"
+        class="card page-section"
+    >
 
         <div class="section-heading">
 
@@ -131,6 +506,7 @@
                     placeholder="Paste or type a news headline here..."
                 ></textarea>
 
+
                 <div class="textarea-footer">
 
                     <span id="charCount">
@@ -170,9 +546,7 @@
         </form>
 
 
-        <!-- =================================================
-             5 STEP LOADING ANIMATION
-        ================================================== -->
+        <!-- LOADING -->
 
         <div
             id="verifyLoading"
@@ -209,46 +583,55 @@
                     data-step="1"
                 >
                     <span class="step-status"></span>
+
                     <span>
                         Searching the live web...
                     </span>
                 </div>
+
 
                 <div
                     class="verification-step"
                     data-step="2"
                 >
                     <span class="step-status"></span>
+
                     <span>
                         Cross-referencing sources...
                     </span>
                 </div>
+
 
                 <div
                     class="verification-step"
                     data-step="3"
                 >
                     <span class="step-status"></span>
+
                     <span>
                         Checking trusted news sources...
                     </span>
                 </div>
+
 
                 <div
                     class="verification-step"
                     data-step="4"
                 >
                     <span class="step-status"></span>
+
                     <span>
                         AI reasoning &amp; plausibility check...
                     </span>
                 </div>
+
 
                 <div
                     class="verification-step"
                     data-step="5"
                 >
                     <span class="step-status"></span>
+
                     <span>
                         Running ML prediction...
                     </span>
@@ -259,9 +642,7 @@
         </div>
 
 
-        <!-- =================================================
-             VERIFICATION RECEIPT
-        ================================================== -->
+        <!-- RESULT -->
 
         <div
             id="resultBox"
@@ -344,6 +725,7 @@
                 <div class="receipt-summary-grid">
 
                     <div>
+
                         <span>
                             CONFIDENCE
                         </span>
@@ -351,9 +733,12 @@
                         <strong id="resultConfidenceTop">
                             —
                         </strong>
+
                     </div>
 
+
                     <div>
+
                         <span>
                             MODE
                         </span>
@@ -361,9 +746,12 @@
                         <strong id="resultModeTop">
                             —
                         </strong>
+
                     </div>
 
+
                     <div>
+
                         <span>
                             TIME
                         </span>
@@ -371,6 +759,7 @@
                         <strong id="resultTime">
                             —
                         </strong>
+
                     </div>
 
                 </div>
@@ -487,7 +876,10 @@
          EXPLAINABLE AI
     ====================================================== -->
 
-    <section class="card explain-card">
+    <section
+        id="explainSection"
+        class="card page-section"
+    >
 
         <div class="section-heading">
 
@@ -606,7 +998,10 @@
          5 LAYER SYSTEM
     ====================================================== -->
 
-    <section class="card layers-card">
+    <section
+        id="layersSection"
+        class="card page-section"
+    >
 
         <div class="section-heading">
 
@@ -754,52 +1149,132 @@
 
 
     <!-- =====================================================
-         STATS
+         ANALYTICS
     ====================================================== -->
 
-    <section class="stats-grid">
+    <section
+        id="analyticsSection"
+        class="card page-section analytics-section"
+    >
 
-        <div class="dashboard-card">
+        <div class="section-heading">
 
-            <span>
-                Total Checks
-            </span>
+            <div class="title-row">
 
-            <strong id="statTotal">
-                0
-            </strong>
+                <div class="section-icon">
+                    ▥
+                </div>
+
+                <div>
+
+                    <h3>
+                        Verification Analytics
+                    </h3>
+
+                    <p>
+                        Overview of your news verification activity.
+                    </p>
+
+                </div>
+
+            </div>
 
         </div>
 
 
-        <div class="dashboard-card">
+        <div class="stats-grid">
 
-            <span>
-                Real
-            </span>
+            <div class="dashboard-card">
 
-            <strong
-                id="statReal"
-                class="real-text"
-            >
-                0
-            </strong>
+                <span>
+                    Total Checks
+                </span>
+
+                <strong id="statTotal">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <span>
+                    Real
+                </span>
+
+                <strong
+                    id="statReal"
+                    class="real-text"
+                >
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <span>
+                    Fake
+                </span>
+
+                <strong
+                    id="statFake"
+                    class="fake-text"
+                >
+                    0
+                </strong>
+
+            </div>
 
         </div>
 
 
-        <div class="dashboard-card">
+        <div class="analytics-info-grid">
 
-            <span>
-                Fake
-            </span>
+            <div class="analytics-info-card">
 
-            <strong
-                id="statFake"
-                class="fake-text"
-            >
-                0
-            </strong>
+                <span class="analytics-info-icon">
+                    5
+                </span>
+
+                <div>
+
+                    <strong>
+                        Verification Layers
+                    </strong>
+
+                    <p>
+                        Each submitted headline can be evaluated
+                        through multiple verification stages.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="analytics-info-card">
+
+                <span class="analytics-info-icon">
+                    AI
+                </span>
+
+                <div>
+
+                    <strong>
+                        Explainable Results
+                    </strong>
+
+                    <p>
+                        Use LIME or SHAP to inspect word-level
+                        model contributions.
+                    </p>
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -810,7 +1285,10 @@
          HISTORY
     ====================================================== -->
 
-    <section class="card">
+    <section
+        id="historySection"
+        class="card page-section"
+    >
 
         <div class="section-heading">
 
@@ -825,6 +1303,14 @@
                 </p>
 
             </div>
+
+            <button
+                type="button"
+                id="historyRefreshBtn"
+                class="secondary-btn"
+            >
+                Refresh
+            </button>
 
         </div>
 
@@ -843,7 +1329,7 @@
 
 
 <!-- =========================================================
-     LIVE FEED SIDEBAR
+     LIVE FEED SIDE PANEL
 ========================================================= -->
 
 <aside
@@ -857,8 +1343,11 @@
         <div>
 
             <span class="live-kicker">
+
                 <span class="live-dot"></span>
+
                 LIVE
+
             </span>
 
             <h3>
@@ -905,10 +1394,307 @@
 
 
 <!-- =========================================================
+     ADVANCED SETTINGS SIDE PANEL
+========================================================= -->
+
+<aside
+    id="settingsPanel"
+    class="settings-panel hidden"
+    aria-label="Advanced settings"
+>
+
+    <div class="settings-panel-head">
+
+        <div>
+
+            <span class="settings-kicker">
+                CONFIGURE
+            </span>
+
+            <h3>
+                Advanced Settings
+            </h3>
+
+            <p>
+                Fine-tune the verification pipeline before
+                your next check.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="closeSettings"
+            class="feed-close"
+            aria-label="Close settings"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <div class="settings-body">
+
+        <!-- LAYERS -->
+
+        <div class="settings-section">
+
+            <span class="settings-section-title">
+                Pipeline Layers
+            </span>
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    <span
+                        id="dotLayerLive"
+                        class="settings-dot on"
+                    ></span>
+                    Trusted Source Verification
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="layerLive"
+                        checked
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    <span
+                        id="dotLayerFactcheck"
+                        class="settings-dot on"
+                    ></span>
+                    Fact-Check Database
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="layerFactcheck"
+                        checked
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    <span
+                        id="dotLayerRedflag"
+                        class="settings-dot on"
+                    ></span>
+                    Red-Flag Rule Check
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="layerRedflag"
+                        checked
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    <span
+                        id="dotLayerLlm"
+                        class="settings-dot off"
+                    ></span>
+                    AI (LLM) Reasoning
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="layerLlm"
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    <span
+                        id="dotLayerModel"
+                        class="settings-dot on"
+                    ></span>
+                    Trained Model Fallback
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="layerModel"
+                        checked
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+        </div>
+
+
+        <!-- FALLBACK MODEL -->
+
+        <div class="settings-section">
+
+            <span class="settings-section-title">
+                Fallback Model
+            </span>
+
+            <select
+                id="fallbackModel"
+                class="settings-select"
+            >
+                <option value="auto">Auto (best performing)</option>
+                <option value="logreg">Logistic Regression</option>
+                <option value="nb">Naive Bayes</option>
+                <option value="svm">Linear SVM</option>
+                <option value="rf">Random Forest</option>
+                <option value="dt">Decision Tree</option>
+                <option value="bilstm">BiLSTM</option>
+                <option value="cnn">Text-CNN</option>
+            </select>
+
+        </div>
+
+
+        <!-- LLM PROVIDER -->
+
+        <div class="settings-section">
+
+            <span class="settings-section-title">
+                LLM Provider
+            </span>
+
+            <select
+                id="llmProvider"
+                class="settings-select"
+            >
+                <option value="gemini">Gemini (free tier)</option>
+                <option value="claude">Claude</option>
+            </select>
+
+        </div>
+
+
+        <!-- EXPLAINABILITY -->
+
+        <div class="settings-section">
+
+            <span class="settings-section-title">
+                Default Explainability Method
+            </span>
+
+            <select
+                id="settingsExplainMethod"
+                class="settings-select"
+            >
+                <option value="lime">LIME</option>
+                <option value="shap">SHAP</option>
+            </select>
+
+        </div>
+
+
+        <!-- CONFIDENCE THRESHOLD -->
+
+        <div class="settings-section">
+
+            <div class="settings-row">
+
+                <span class="settings-section-title settings-section-title-inline">
+                    Confidence Threshold
+                </span>
+
+                <span
+                    id="thresholdValue"
+                    class="settings-range-value"
+                >
+                    60%
+                </span>
+
+            </div>
+
+            <input
+                type="range"
+                min="0"
+                max="100"
+                value="60"
+                id="thresholdSlider"
+                class="settings-range"
+            >
+
+        </div>
+
+
+        <!-- AUTO REFRESH -->
+
+        <div class="settings-section">
+
+            <div class="settings-row">
+
+                <span class="settings-row-label">
+                    Auto-Refresh Live Feed
+                </span>
+
+                <label class="toggle-switch">
+                    <input
+                        type="checkbox"
+                        id="autoRefreshFeed"
+                        checked
+                    >
+                    <span class="toggle-slider"></span>
+                </label>
+
+            </div>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="resetSettingsBtn"
+            class="reset-settings-btn"
+        >
+            Reset to Defaults
+        </button>
+
+    </div>
+
+</aside>
+
+
+<!-- =========================================================
      CHATBOT
 ========================================================= -->
 
-<div id="chatbot" class="chatbot">
+<div
+    id="chatbot"
+    class="chatbot"
+>
 
     <div
         id="chatWindow"
