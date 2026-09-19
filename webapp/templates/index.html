@@ -175,44 +175,26 @@
 
         </button>
 
-
-        <button
-            type="button"
-            class="sidebar-item"
-            data-section="chat"
-        >
-
-            <span class="sidebar-item-icon">
-                ◌
-            </span>
-
-            <span class="sidebar-item-text">
-                VeriQuest AI
-            </span>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="sidebar-item"
-            data-section="settings"
-        >
-
-            <span class="sidebar-item-icon">
-                ⚙
-            </span>
-
-            <span class="sidebar-item-text">
-                Advanced Settings
-            </span>
-
-        </button>
-
     </nav>
 
 
     <div class="sidebar-bottom">
+
+        <!-- Settings moved here (above AI System status) -->
+        <button
+            type="button"
+            class="sidebar-item"
+            data-section="settings"
+            id="sidebarSettingsBtn"
+            style="margin-bottom: 10px;"
+        >
+            <span class="sidebar-item-icon">
+                ⚙
+            </span>
+            <span class="sidebar-item-text">
+                Advanced Settings
+            </span>
+        </button>
 
         <div class="sidebar-status">
 
@@ -303,16 +285,6 @@
                 class="nav-tab"
             >
                 LIVE FEED
-            </button>
-
-
-            <button
-                type="button"
-                id="settingsToggle"
-                class="nav-tab"
-                aria-label="Open advanced settings"
-            >
-                ⚙ SETTINGS
             </button>
 
 
@@ -1020,11 +992,11 @@
 
                 <div>
 
-                    <h3>
+                    <h3 style="font-size: 1.25rem;">
                         5-Layer Verification System
                     </h3>
 
-                    <p>
+                    <p style="font-size: 0.95rem;">
                         Every headline passes through five verification layers.
                     </p>
 
@@ -1815,10 +1787,14 @@
     <button
         type="button"
         id="chatToggle"
-        class="chat-toggle"
-        aria-label="Open chatbot"
+        class="chat-toggle gemini-style-toggle"
+        aria-label="Open VeriQuest AI"
+        title="VeriQuest AI"
     >
-        💬
+        <span class="gemini-orb" aria-hidden="true">
+            <span class="gemini-orb-core"></span>
+            <span class="gemini-orb-ring"></span>
+        </span>
     </button>
 
 </div>

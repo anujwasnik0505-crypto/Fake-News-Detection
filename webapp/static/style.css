@@ -1997,9 +1997,9 @@ button:disabled {
 .layer-box {
     position: relative;
 
-    min-height: 190px;
+    min-height: 200px;
 
-    padding: 15px;
+    padding: 18px;
 
     overflow: hidden;
 
@@ -2025,18 +2025,18 @@ button:disabled {
 }
 
 .layer-number {
-    color: #4e6077;
+    color: #64748b;
 
-    font-size: 9px;
+    font-size: 12px;
 
     font-weight: 900;
 
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
 }
 
 .layer-icon {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
 
     margin-top: 14px;
 
@@ -2044,34 +2044,35 @@ button:disabled {
 
     place-items: center;
 
-    border-radius: 8px;
+    border-radius: 10px;
 
     background:
         rgba(34, 197, 94, 0.08);
 
     color: #55d681;
 
-    font-size: 12px;
+    font-size: 14px;
 
     font-weight: 900;
 }
 
 .layer-box h4 {
-    margin: 13px 0 5px;
+    margin: 14px 0 6px;
 
-    color: #dce5f0;
+    color: #e8eef7;
 
-    font-size: 12px;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .layer-box p {
     margin: 0;
 
-    color: #69788c;
+    color: #8b9bb0;
 
-    font-size: 9px;
+    font-size: 12px;
 
-    line-height: 1.6;
+    line-height: 1.55;
 }
 
 
@@ -4300,3 +4301,90 @@ body.light-theme .feed-thumb-placeholder {
     background: rgba(37,99,235,0.06) !important;
 }
 
+
+/* =========================================================
+   GEMINI-STYLE CHAT TOGGLE (VeriQuest AI logo)
+========================================================= */
+
+.chat-toggle.gemini-style-toggle {
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    display: grid;
+    place-items: center;
+    overflow: visible;
+}
+
+.gemini-orb {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: block;
+}
+
+.gemini-orb-core {
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background:
+        conic-gradient(
+            from 180deg,
+            #4285f4,
+            #9b72cb,
+            #d96570,
+            #f2a60c,
+            #4285f4
+        );
+    filter: saturate(1.15);
+    box-shadow:
+        0 4px 18px rgba(66, 133, 244, 0.45),
+        0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.gemini-orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            rgba(255, 255, 255, 0.35),
+            transparent 45%
+        ),
+        conic-gradient(
+            from 0deg,
+            #4285f4,
+            #9b72cb,
+            #d96570,
+            #f2a60c,
+            #34a853,
+            #4285f4
+        );
+    opacity: 0.9;
+    animation: gemini-spin 6s linear infinite;
+    mask: radial-gradient(circle, transparent 52%, #000 54%);
+    -webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
+}
+
+.chat-toggle.gemini-style-toggle:hover .gemini-orb-core {
+    transform: scale(1.06);
+    transition: transform 0.2s ease;
+}
+
+.chat-toggle.gemini-style-toggle:hover .gemini-orb-ring {
+    animation-duration: 2.5s;
+}
+
+@keyframes gemini-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Section title for 5-layer a bit larger */
+#explainSection .section-heading h3,
+.page-section .section-heading h3 {
+    font-size: 1.15rem;
+}

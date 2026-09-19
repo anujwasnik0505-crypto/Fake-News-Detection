@@ -256,7 +256,8 @@ const sidebarItems =
 ========================================================= */
 
 const settingsPanel = $("settingsPanel");
-const settingsToggle = $("settingsToggle");
+const settingsToggle = $("settingsToggle"); // may be null (removed from topbar)
+const sidebarSettingsBtn = $("sidebarSettingsBtn");
 const closeSettings = $("closeSettings");
 
 const layerLive = $("layerLive");
@@ -3275,29 +3276,28 @@ function closeSettingsPanel() {
 }
 
 
+function toggleSettingsFromUI(event) {
+    if (event) event.preventDefault();
+    if (
+        settingsPanel &&
+        !settingsPanel.classList.contains("hidden")
+    ) {
+        closeSettingsPanel();
+    } else {
+        openSettingsPanel();
+    }
+}
+
 if (settingsToggle) {
+    settingsToggle.addEventListener("click", toggleSettingsFromUI);
+}
 
-    settingsToggle.addEventListener(
-        "click",
-        function(event) {
-
-            event.preventDefault();
-
-            if (
-                settingsPanel &&
-                !settingsPanel.classList.contains(
-                    "hidden"
-                )
-            ) {
-
-                closeSettingsPanel();
-
-            } else {
-
-                openSettingsPanel();
-            }
-        }
-    );
+if (sidebarSettingsBtn) {
+    sidebarSettingsBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+        closeSidebar();
+        openSettingsPanel();
+    });
 }
 
 
