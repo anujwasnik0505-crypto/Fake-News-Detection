@@ -1861,7 +1861,7 @@ function openChat() {
     }
 
 
-    show(chatWindow);
+    var cb = document.getElementById("chatbot"); if (cb) cb.classList.add("fullpage-mode"); show(chatWindow);
 
 
     setTimeout(
@@ -1938,7 +1938,7 @@ if (chatClose) {
             event.preventDefault();
             event.stopPropagation();
 
-            hide(chatWindow);
+            var cb = document.getElementById("chatbot"); if (cb) cb.classList.remove("fullpage-mode"); hide(chatWindow);
         }
     );
 }
@@ -2615,12 +2615,10 @@ function renderHistory(
                 "button";
 
 
-            deleteButton.className =
-                "delete-history-btn";
+            deleteButton.className = "delete-history-btn history-delete-btn";
 
 
-            deleteButton.textContent =
-                "Delete";
+            deleteButton.textContent = "×";
 
 
             deleteButton.title =
@@ -2658,23 +2656,14 @@ function renderHistory(
                     }
 
 
-                    const confirmed =
-                        window.confirm(
-                            "Are you sure you want to delete this history item?"
-                        );
-
-
-                    if (!confirmed) {
-                        return;
-                    }
+                    // Direct delete - no confirm
 
 
                     deleteButton.disabled =
                         true;
 
 
-                    deleteButton.textContent =
-                        "Deleting...";
+                    deleteButton.textContent = "…";
 
 
                     try {
@@ -2734,8 +2723,7 @@ function renderHistory(
                             false;
 
 
-                        deleteButton.textContent =
-                            "Delete";
+                        deleteButton.textContent = "×";
 
 
                         alert(
@@ -2826,6 +2814,7 @@ function openLiveFeed() {
 
     closeSettingsPanel();
 
+    if (liveFeedPanel) liveFeedPanel.classList.add("fullpage-mode");
     show(liveFeedPanel);
 
 
@@ -2862,6 +2851,7 @@ function openLiveFeed() {
 
 function closeLiveFeedPanel() {
 
+    if (liveFeedPanel) liveFeedPanel.classList.remove("fullpage-mode");
     hide(liveFeedPanel);
 
 
@@ -3004,8 +2994,9 @@ if (historyRefreshBtn) {
 ========================================================= */
 
 function openSettingsPanel() {
+    if (settingsPanel) settingsPanel.classList.add("fullpage-mode");
 
-    hide(chatWindow);
+    var cb = document.getElementById("chatbot"); if (cb) cb.classList.remove("fullpage-mode"); hide(chatWindow);
 
     hide(liveFeedPanel);
 
@@ -3035,6 +3026,7 @@ function openSettingsPanel() {
 
 
 function closeSettingsPanel() {
+    if (settingsPanel) settingsPanel.classList.remove("fullpage-mode");
 
     hide(settingsPanel);
 
@@ -3383,7 +3375,7 @@ document.addEventListener(
 
             closeSettingsPanel();
 
-            hide(chatWindow);
+            var cb = document.getElementById("chatbot"); if (cb) cb.classList.remove("fullpage-mode"); hide(chatWindow);
         }
     }
 );
