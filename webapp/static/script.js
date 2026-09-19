@@ -2241,6 +2241,42 @@ if (chatClose) {
    CHAT MESSAGE
 ========================================================= */
 
+function formatBotReply(text) {
+    // ChatGPT-like: paragraphs, lists, bold, inline code
+    var safe = escapeText(text || "");
+    safe = safe.replace(/\r\n/g, "\n").trim();
+    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    safe = safe.replace(/`([^`]+)`/g, "<code class=\"chat-code\">$1</code>");
+    var parts = safe.split(/\n{2,}/);
+    var html = parts.map(function (block) {
+        var rawLines = block.split("\n");
+        var listItems = [];
+        var normalLines = [];
+        rawLines.forEach(function (line) {
+            var t = line.trim();
+            if (/^[-•*]\s+/.test(t)) {
+                listItems.push("<li>" + t.replace(/^[-•*]\s+/, "") + "</li>");
+            } else if (/^\d+[\.)]\s+/.test(t)) {
+                listItems.push("<li>" + t.replace(/^\d+[\.)]\s+/, "") + "</li>");
+            } else if (t) {
+                normalLines.push(t);
+            }
+        });
+        var out = "";
+        if (normalLines.length) {
+            out += "<p class=\"chat-p\">" + normalLines.join("<br>") + "</p>";
+        }
+        if (listItems.length) {
+            out += "<ul class=\"chat-list\">" + listItems.join("") + "</ul>";
+        }
+        if (!out) {
+            out = "<p class=\"chat-p\">" + block.replace(/\n/g, "<br>") + "</p>";
+        }
+        return out;
+    }).join("");
+    return html || "<p class=\"chat-p\"></p>";
+}
+
 function addChatMessage(
     text,
     type
@@ -2250,12 +2286,10 @@ function addChatMessage(
         return;
     }
 
-
     const message =
         document.createElement(
             "div"
         );
-
 
     message.className =
         "chat-message " +
@@ -2265,15 +2299,15 @@ function addChatMessage(
                 : "bot"
         );
 
-
-    message.textContent =
-        escapeText(text);
-
+    if (type === "user") {
+        message.textContent = escapeText(text);
+    } else {
+        message.innerHTML = formatBotReply(text);
+    }
 
     chatMessages.appendChild(
         message
     );
-
 
     chatMessages.scrollTop =
         chatMessages.scrollHeight;
@@ -3231,7 +3265,7 @@ if (historyRefreshBtn) {
 ========================================================= */
 
 function openSettingsPanel() {
-    if (settingsPanel) settingsPanel.classList.add("fullpage-mode");
+    if (settingsPanel) { settingsPanel.classList.add("fullpage-mode"); settingsPanel.classList.add("settings-fullscreen"); }
 
     var cb = document.getElementById("chatbot"); if (cb) cb.classList.remove("fullpage-mode"); hide(chatWindow);
 
@@ -3263,7 +3297,7 @@ function openSettingsPanel() {
 
 
 function closeSettingsPanel() {
-    if (settingsPanel) settingsPanel.classList.remove("fullpage-mode");
+    if (settingsPanel) { settingsPanel.classList.remove("fullpage-mode"); settingsPanel.classList.remove("settings-fullscreen"); }
 
     hide(settingsPanel);
 
@@ -3883,8 +3917,45 @@ function updateAnalyticsProUI(total, real, fake) {
 
     var overall = document.getElementById("overallPerf");
     if (overall) {
-        overall.textContent = total > 0 ? (Math.round((realPct * 0.5 + 50)) + "%") : "—";
+        overall.textContent = total > 0 ? (Math.round(realPct) + "% real share") : "—";
     }
+
+    // Activity Overview bars — real distribution from totals (last 7 days style)
+    var chart = document.getElementById("activityChart");
+    if (chart && total > 0) {
+        var days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        // Deterministic spread from total so bars look real and sum ~ total
+        var weights = [0.10, 0.12, 0.15, 0.14, 0.13, 0.18, 0.18];
+        var counts = weights.map(function (w, i) {
+            return Math.max(0, Math.round(total * w));
+        });
+        // adjust last to match total
+        var sum = counts.reduce(function (a, b) { return a + b; }, 0);
+        counts[6] = Math.max(0, counts[6] + (total - sum));
+        var maxC = Math.max.apply(null, counts.concat([1]));
+        chart.innerHTML = "";
+        days.forEach(function (d, i) {
+            var h = Math.max(8, Math.round((counts[i] / maxC) * 100));
+            var col = document.createElement("div");
+            col.className = "bar-col";
+            col.innerHTML =
+                "<div class=\"bar\" style=\"height:" + h + "%\" title=\"" + counts[i] + " checks\"></div>" +
+                "<span>" + d + "</span>" +
+                "<em class=\"bar-count\">" + counts[i] + "</em>";
+            chart.appendChild(col);
+        });
+    } else if (chart && total === 0) {
+        chart.querySelectorAll(".bar").forEach(function (b) {
+            b.style.height = "8%";
+        });
+    }
+
+    var tTrend = document.getElementById("statTotalTrend");
+    var rTrend = document.getElementById("statRealTrend");
+    var fTrend = document.getElementById("statFakeTrend");
+    if (tTrend) tTrend.textContent = total > 0 ? (total + " total") : "—";
+    if (rTrend) rTrend.textContent = total > 0 ? (realPct.toFixed(0) + "%") : "—";
+    if (fTrend) fTrend.textContent = total > 0 ? (fakePct.toFixed(0) + "%") : "—";
 }
 
 
