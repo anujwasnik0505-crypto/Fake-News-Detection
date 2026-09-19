@@ -1110,7 +1110,7 @@ async function runVerificationAnimation() {
 
 
 /* =========================================================
-   DISPLAY RESULT
+   DISPLAY RESULT  (Phase-1: 3-way verdict + layer report)
 ========================================================= */
 
 function displayVerificationResult(
@@ -1126,160 +1126,124 @@ function displayVerificationResult(
         "real",
         "fake",
         "misleading",
+        "uncertain",
         "error"
     );
 
 
-    const verdict =
-        String(
-            data.verdict ||
-            data.prediction ||
-            "UNKNOWN"
-        ).toUpperCase();
+    // Support both old binary and new 3-way verdicts
+    const rawVerdict = String(
+        data.verdict ||
+        data.prediction ||
+        "UNKNOWN"
+    ).trim();
 
+    const verdictUpper = rawVerdict.toUpperCase();
 
-    const confidence =
-        data.confidence !== undefined &&
-        data.confidence !== null
-
-            ? formatConfidence(
-                data.confidence
-            )
-
-            : "—";
-
-
-    const mode =
-        formatMode(data.mode);
-
-
-    const scoreValue =
-        data.score ??
-        data.signal_score ??
-        data.signalScore ??
-        data.confidence;
-
-
-    let scoreNumber =
-        "—";
-
+    // Map to display label + CSS class
+    let displayLabel = rawVerdict;
+    let cssClass = "uncertain";
+    let icon = "?";
 
     if (
-        scoreValue !== undefined &&
-        scoreValue !== null
+        verdictUpper === "LIKELY REAL" ||
+        verdictUpper === "REAL" ||
+        verdictUpper === "REAL NEWS"
     ) {
+        displayLabel = "Likely Real";
+        cssClass = "real";
+        icon = "✓";
+    } else if (
+        verdictUpper === "SUSPICIOUS" ||
+        verdictUpper === "FAKE" ||
+        verdictUpper === "FAKE NEWS"
+    ) {
+        displayLabel = "Suspicious";
+        cssClass = "fake";
+        icon = "✕";
+    } else if (
+        verdictUpper === "UNCERTAIN" ||
+        verdictUpper === "UNVERIFIED" ||
+        verdictUpper === "MISLEADING"
+    ) {
+        displayLabel = "Uncertain";
+        cssClass = "uncertain";
+        icon = "?";
+    }
 
-        const number =
-            Number(scoreValue);
+    resultBox.classList.add(cssClass);
 
-
-        if (!Number.isNaN(number)) {
-
-            scoreNumber =
-                Math.round(
-                    number <= 1
-                        ? number * 100
-                        : number
-                );
-        }
+    if (verdictText) {
+        verdictText.textContent = displayLabel;
+    }
+    if (verdictIcon) {
+        verdictIcon.textContent = icon;
     }
 
 
-    /* VERDICT */
+    /* Confidence / Score */
 
-    if (verdict === "REAL") {
+    const confidence =
+        data.model_confidence !== undefined &&
+        data.model_confidence !== null
+            ? formatConfidence(data.model_confidence)
+            : (data.confidence !== undefined && data.confidence !== null
+                ? formatConfidence(data.confidence)
+                : (data.confidence_label || "—"));
 
-        resultBox.classList.add(
-            "real"
-        );
+    const mode = formatMode(data.mode);
 
-        verdictText.textContent =
-            "REAL NEWS";
-
-        verdictIcon.textContent =
-            "✓";
-
-
-    } else if (
-        verdict === "FAKE"
-    ) {
-
-        resultBox.classList.add(
-            "fake"
-        );
-
-        verdictText.textContent =
-            "FAKE NEWS";
-
-        verdictIcon.textContent =
-            "✕";
-
-
-    } else if (
-        verdict === "MISLEADING"
-    ) {
-
-        resultBox.classList.add(
-            "misleading"
-        );
-
-        verdictText.textContent =
-            "MISLEADING";
-
-        verdictIcon.textContent =
-            "!";
-
-
+    // Signal score from real/fake signals if available
+    let scoreNumber = "—";
+    if (data.score && typeof data.score === "object") {
+        const realS = data.score.real_signals || 0;
+        const fakeS = data.score.fake_signals || 0;
+        const total = realS + fakeS;
+        if (total > 0) {
+            scoreNumber = Math.round((realS / total) * 100);
+        }
     } else {
+        const scoreValue =
+            data.signal_score ??
+            data.signalScore ??
+            data.confidence ??
+            data.model_confidence;
 
-        verdictText.textContent =
-            verdict;
-
-        verdictIcon.textContent =
-            "?";
+        if (scoreValue !== undefined && scoreValue !== null) {
+            const number = Number(scoreValue);
+            if (!Number.isNaN(number)) {
+                scoreNumber = Math.round(
+                    number <= 1 ? number * 100 : number
+                );
+            }
+        }
     }
 
 
     /* BASIC DATA */
 
     if (resultHeadline) {
-
         resultHeadline.textContent =
-            data.headline ||
-            currentHeadline;
+            data.headline || currentHeadline;
     }
-
 
     if (resultMode) {
-
-        resultMode.textContent =
-            mode;
+        resultMode.textContent = mode;
     }
-
 
     if (signalScore) {
-
-        signalScore.textContent =
-            scoreNumber;
+        signalScore.textContent = scoreNumber;
     }
-
 
     if (resultConfidenceTop) {
-
-        resultConfidenceTop.textContent =
-            confidence;
+        resultConfidenceTop.textContent = confidence;
     }
-
 
     if (resultModeTop) {
-
-        resultModeTop.textContent =
-            mode;
+        resultModeTop.textContent = mode;
     }
 
-
     if (resultTime) {
-
         resultTime.textContent =
             data.time ||
             data.verification_time ||
@@ -1287,9 +1251,7 @@ function displayVerificationResult(
             "Completed";
     }
 
-
     if (receiptTime) {
-
         receiptTime.textContent =
             data.checked_at ||
             data.timestamp ||
@@ -1297,38 +1259,23 @@ function displayVerificationResult(
     }
 
 
-    /* PUBLISHER */
+    /* PUBLISHER / RATING (legacy) */
 
     if (data.publisher) {
-
         show(publisherRow);
-
         if (resultPublisher) {
-
-            resultPublisher.textContent =
-                data.publisher;
+            resultPublisher.textContent = data.publisher;
         }
-
     } else {
-
         hide(publisherRow);
     }
 
-
-    /* RATING */
-
     if (data.rating) {
-
         show(ratingRow);
-
         if (resultRating) {
-
-            resultRating.textContent =
-                data.rating;
+            resultRating.textContent = data.rating;
         }
-
     } else {
-
         hide(ratingRow);
     }
 
@@ -1341,84 +1288,83 @@ function displayVerificationResult(
         data.details ||
         data.analysis;
 
-
     if (reason) {
-
         show(reasonBox);
-
         if (resultReason) {
-
-            resultReason.textContent =
-                reason;
+            resultReason.textContent = reason;
         }
-
     } else {
-
         hide(reasonBox);
     }
 
 
-    /* SOURCES */
+    /* EVIDENCE + SOURCES (Phase-1) */
 
-    if (
-        Array.isArray(data.sources) &&
-        data.sources.length > 0
-    ) {
+    const evidenceItems = Array.isArray(data.evidence)
+        ? data.evidence
+        : [];
 
+    // Also support old-style sources array
+    const oldSources = Array.isArray(data.sources)
+        ? data.sources
+        : [];
+
+    if (evidenceItems.length > 0 || oldSources.length > 0) {
         show(sourcesBox);
+        sourcesList.innerHTML = "";
 
-        sourcesList.innerHTML =
-            "";
+        evidenceItems.forEach(function (item) {
+            const li = document.createElement("li");
 
+            if (item.url) {
+                const a = document.createElement("a");
+                a.href = item.url;
+                a.target = "_blank";
+                a.rel = "noopener noreferrer";
+                a.textContent = item.label || item.detail || "Source";
+                li.appendChild(a);
 
-        data.sources.forEach(
-            function(source) {
-
-                const li =
-                    document.createElement(
-                        "li"
-                    );
-
-
-                if (
-                    source &&
-                    typeof source ===
-                    "object"
-                ) {
-
-                    const title =
-                        source.title ||
-                        source.name ||
-                        source.source ||
-                        source.url ||
-                        JSON.stringify(
-                            source
-                        );
-
-
-                    li.textContent =
-                        title;
-
-                } else {
-
-                    li.textContent =
-                        source;
+                if (item.detail) {
+                    const span = document.createElement("span");
+                    span.textContent = " — " + item.detail;
+                    span.style.opacity = "0.75";
+                    li.appendChild(span);
                 }
-
-
-                sourcesList.appendChild(
-                    li
-                );
+            } else {
+                li.textContent =
+                    (item.label ? item.label + ": " : "") +
+                    (item.detail || "");
             }
-        );
 
+            sourcesList.appendChild(li);
+        });
+
+        // Fallback for old sources format
+        oldSources.forEach(function (source) {
+            const li = document.createElement("li");
+            if (source && typeof source === "object") {
+                li.textContent =
+                    source.title ||
+                    source.name ||
+                    source.source ||
+                    source.url ||
+                    JSON.stringify(source);
+            } else {
+                li.textContent = source;
+            }
+            sourcesList.appendChild(li);
+        });
     } else {
-
         hide(sourcesBox);
     }
 
 
-    /* VERIFIED / DISPUTED */
+    /* LAYER REPORT (Phase-1) */
+
+    renderLayerReport(data.layers);
+
+
+    /* VERIFIED / DISPUTED (legacy) */
 
     renderInsightList(
         verifiedBox,
@@ -1427,7 +1373,6 @@ function displayVerificationResult(
         data.verified_points ||
         data.confirmed
     );
-
 
     renderInsightList(
         disputedBox,
@@ -1439,6 +1384,149 @@ function displayVerificationResult(
 
 
     show(resultBox);
+}
+
+
+/* =========================================================
+   LAYER REPORT RENDERER (Phase-1)
+========================================================= */
+
+function renderLayerReport(layers) {
+    let layerBox = document.getElementById("layerReportBox");
+    let layerList = document.getElementById("layerReportList");
+
+    // Create container on the fly if not present in HTML
+    if (!layerBox) {
+        layerBox = document.createElement("div");
+        layerBox.id = "layerReportBox";
+        layerBox.className = "layer-report-box";
+        layerBox.innerHTML =
+            "<h4 style='margin:12px 0 8px;font-size:13px;color:#94a3b8;'>Layer-by-Layer Report</h4>" +
+            "<ul id='layerReportList' class='layer-report-list'></ul>";
+
+        // Insert after reasonBox or sourcesBox if available
+        const anchor =
+            document.getElementById("reasonBox") ||
+            document.getElementById("sourcesBox") ||
+            resultBox;
+
+        if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(
+                layerBox,
+                anchor.nextSibling
+            );
+        } else if (resultBox) {
+            resultBox.appendChild(layerBox);
+        }
+    }
+
+    layerList = document.getElementById("layerReportList");
+    if (!layerList) return;
+
+    layerList.innerHTML = "";
+
+    if (!layers || typeof layers !== "object") {
+        layerBox.style.display = "none";
+        return;
+    }
+
+    layerBox.style.display = "block";
+
+    const order = [
+        "trusted_source",
+        "fact_check",
+        "plausibility",
+        "llm_reasoning",
+        "ml_model",
+    ];
+
+    const statusColor = {
+        passed: "#22c55e",
+        confirmed_real: "#22c55e",
+        plausible: "#22c55e",
+        clean: "#22c55e",
+        completed: "#3b82f6",
+        no_match: "#64748b",
+        no_review: "#64748b",
+        skipped: "#64748b",
+        not_configured: "#64748b",
+        flagged: "#ef4444",
+        flagged_fake: "#ef4444",
+        error: "#f59e0b",
+        reviewed: "#f59e0b",
+    };
+
+    order.forEach(function (key) {
+        const layer = layers[key];
+        if (!layer) return;
+
+        const li = document.createElement("li");
+        li.style.cssText =
+            "display:flex;align-items:flex-start;gap:10px;" +
+            "padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);";
+
+        const badge = document.createElement("span");
+        badge.textContent = (layer.status || "—").replace(/_/g, " ");
+        badge.style.cssText =
+            "font-size:10px;font-weight:700;padding:2px 8px;" +
+            "border-radius:999px;text-transform:uppercase;" +
+            "background:rgba(255,255,255,0.06);" +
+            "color:" + (statusColor[layer.status] || "#94a3b8") + ";";
+
+        const content = document.createElement("div");
+        content.style.flex = "1";
+
+        const title = document.createElement("strong");
+        title.textContent = layer.name || key;
+        title.style.cssText = "display:block;font-size:12px;color:#e2e8f0;";
+
+        const detail = document.createElement("span");
+        detail.textContent = layer.detail || "";
+        detail.style.cssText =
+            "display:block;font-size:11px;color:#94a3b8;margin-top:2px;";
+
+        content.appendChild(title);
+        content.appendChild(detail);
+
+        // Extra: show source links for trusted_source / fact_check
+        if (key === "trusted_source" && Array.isArray(layer.sources)) {
+            layer.sources.slice(0, 3).forEach(function (s) {
+                const src = document.createElement("div");
+                src.style.cssText =
+                    "font-size:10px;color:#64748b;margin-top:2px;";
+                src.textContent =
+                    "• " + (s.source || "") +
+                    (s.similarity ? " (" + Math.round(s.similarity * 100) + "% match)" : "");
+                content.appendChild(src);
+            });
+        }
+
+        if (key === "fact_check" && Array.isArray(layer.reviews)) {
+            layer.reviews.slice(0, 2).forEach(function (r) {
+                const src = document.createElement("div");
+                src.style.cssText =
+                    "font-size:10px;color:#64748b;margin-top:2px;";
+                if (r.url) {
+                    const a = document.createElement("a");
+                    a.href = r.url;
+                    a.target = "_blank";
+                    a.rel = "noopener";
+                    a.textContent =
+                        (r.publisher || "Fact-check") + ": " + (r.rating || "");
+                    a.style.color = "#60a5fa";
+                    src.appendChild(a);
+                } else {
+                    src.textContent =
+                        "• " + (r.publisher || "") + ": " + (r.rating || "");
+                }
+                content.appendChild(src);
+            });
+        }
+
+        li.appendChild(badge);
+        li.appendChild(content);
+        layerList.appendChild(li);
+    });
 }
 
 

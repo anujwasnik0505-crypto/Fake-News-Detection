@@ -1498,6 +1498,20 @@ button:disabled {
     color: #fbbf24;
 }
 
+/* Phase-1: Uncertain / 3-way verdict */
+.result-box.uncertain
+.verdict-icon {
+    color: #94a3b8;
+
+    background:
+        rgba(148, 163, 184, 0.12);
+}
+
+.result-box.uncertain
+#verdictText {
+    color: #94a3b8;
+}
+
 .result-box.error
 .verdict-icon {
     color: #fb7185;
@@ -1506,6 +1520,25 @@ button:disabled {
 .result-box.error
 #verdictText {
     color: #fb7185;
+}
+
+/* Phase-1: Layer report */
+.layer-report-box {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.layer-report-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.layer-report-list li:last-child {
+    border-bottom: none !important;
 }
 
 

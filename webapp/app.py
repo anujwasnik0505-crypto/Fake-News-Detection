@@ -155,6 +155,13 @@ def index():
     methods=["POST"]
 )
 def api_check():
+    """
+    Phase-1 improved checker:
+    - Runs ALL 5 layers (no early return)
+    - Returns detailed per-layer report
+    - Uses 3-way verdict: Likely Real / Suspicious / Uncertain
+    - Includes evidence + source links
+    """
     data = (
         request
         .get_json(
@@ -180,195 +187,298 @@ def api_check():
         model_name, best_model = get_model()
 
         # ====================================================
-        # LAYER 1
-        # TRUSTED SOURCE VERIFICATION
+        # Collect results from ALL layers
         # ====================================================
+        layers = {}
+        evidence = []          # list of {"label", "url", "detail"}
+        score_real = 0         # positive signals
+        score_fake = 0         # negative signals
 
+        # ----------------------------------------------------
+        # LAYER 1 — Trusted Source Verification
+        # ----------------------------------------------------
         verification = verify_headline(headline)
+        matched = verification.get("matched_sources", [])
+        is_verified = bool(verification.get("verified"))
 
-        if verification.get("verified"):
-            sources = [
-                item.get(
-                    "source",
-                    "Unknown source"
-                )
-                for item in verification.get(
-                    "matched_sources",
-                    []
-                )
+        layers["trusted_source"] = {
+            "name": "Trusted Source",
+            "status": "passed" if is_verified else "no_match",
+            "detail": (
+                f"Matched {len(matched)} trusted source(s)"
+                if is_verified
+                else "No matching trusted outlet found"
+            ),
+            "sources": [
+                {
+                    "title": m.get("title", ""),
+                    "source": m.get("source", "Unknown"),
+                    "similarity": m.get("similarity"),
+                }
+                for m in matched
+            ],
+            "provider": verification.get("provider", "unknown"),
+        }
+
+        if is_verified:
+            score_real += 3
+            for m in matched:
+                evidence.append({
+                    "label": f"Trusted: {m.get('source', 'Unknown')}",
+                    "detail": m.get("title", ""),
+                    "url": None,
+                    "type": "trusted_source",
+                })
+
+        # ----------------------------------------------------
+        # LAYER 2 — Fact-Check Database
+        # ----------------------------------------------------
+        fc = search_fact_checks(headline)
+        reviews = fc.get("reviews", []) if fc.get("found") else []
+        fact_status = "not_configured"
+        fact_verdict = None
+        fact_detail = "Fact-check API key not configured"
+
+        if fc.get("configured") is False:
+            fact_status = "skipped"
+            fact_detail = "Google Fact Check API key not set"
+        elif fc.get("error"):
+            fact_status = "error"
+            fact_detail = "Fact-check API request failed"
+        elif reviews:
+            top = reviews[0]
+            rating = str(top.get("rating", "")).strip()
+            rating_lower = rating.lower()
+            fake_words = [
+                "false", "fake", "misleading", "pants",
+                "incorrect", "not true", "mostly false",
+            ]
+            real_words = [
+                "true", "mostly true", "correct", "accurate",
             ]
 
-            log_check(
-                headline,
-                "REAL",
-                "verified",
-                f"sources: {sources}"
-            )
+            if any(w in rating_lower for w in fake_words):
+                fact_verdict = "FAKE"
+                fact_status = "flagged_fake"
+                score_fake += 3
+            elif any(w in rating_lower for w in real_words):
+                fact_verdict = "REAL"
+                fact_status = "confirmed_real"
+                score_real += 3
+            else:
+                fact_verdict = "MIXED"
+                fact_status = "reviewed"
+                score_fake += 1
 
-            return jsonify({
-                "headline": headline,
-                "verdict": "REAL",
-                "mode": "verified",
-                "sources": sources,
-                "reason": "The headline was matched with trusted news sources."
+            fact_detail = f"{top.get('publisher', 'Fact-checker')}: {rating}"
+            evidence.append({
+                "label": f"Fact-check: {top.get('publisher', 'Unknown')}",
+                "detail": rating,
+                "url": top.get("url") or None,
+                "type": "fact_check",
             })
+        else:
+            fact_status = "no_review"
+            fact_detail = "No existing fact-check found for this claim"
 
-        # ====================================================
-        # LAYER 2
-        # FACT CHECK
-        # ====================================================
-
-        fc = search_fact_checks(headline)
-
-        if fc.get("found"):
-            reviews = fc.get("reviews", [])
-
-            if reviews:
-                top = reviews[0]
-
-                rating = str(
-                    top.get(
-                        "rating",
-                        ""
-                    )
-                )
-
-                rating_lower = rating.lower()
-
-                fake_words = [
-                    "false",
-                    "fake",
-                    "misleading",
-                    "pants",
-                    "incorrect",
-                    "not true"
-                ]
-
-                verdict = (
-                    "FAKE"
-                    if any(
-                        word in rating_lower
-                        for word in fake_words
-                    )
-                    else "REAL"
-                )
-
-                publisher = top.get(
-                    "publisher",
-                    "Fact-check source"
-                )
-
-                log_check(
-                    headline,
-                    verdict,
-                    "fact_checked",
-                    f"{publisher}: {rating}"
-                )
-
-                response = {
-                    "headline": headline,
-                    "verdict": verdict,
-                    "mode": "fact_checked",
-                    "publisher": publisher,
-                    "rating": rating
+        layers["fact_check"] = {
+            "name": "Fact Check",
+            "status": fact_status,
+            "detail": fact_detail,
+            "verdict": fact_verdict,
+            "reviews": [
+                {
+                    "publisher": r.get("publisher"),
+                    "rating": r.get("rating"),
+                    "url": r.get("url"),
+                    "claim": r.get("claim"),
                 }
+                for r in reviews[:3]
+            ],
+        }
 
-                if top.get("url"):
-                    response["url"] = top["url"]
-
-                return jsonify(response)
-
-        # ====================================================
-        # LAYER 3
-        # RULE BASED PLAUSIBILITY
-        # ====================================================
-
+        # ----------------------------------------------------
+        # LAYER 3 — Red-flag / Plausibility Rules
+        # ----------------------------------------------------
         plausibility = check_plausibility(headline)
+        flagged = bool(plausibility.get("flagged"))
+        matched_patterns = plausibility.get("matched_patterns", [])
 
-        if plausibility.get("flagged"):
-            reason = (
-                plausibility.get("reason")
-                or
-                "Matches common fake-news red-flag patterns."
-            )
+        layers["plausibility"] = {
+            "name": "Plausibility / Red-flag",
+            "status": "flagged" if flagged else "clean",
+            "detail": (
+                f"Matched patterns: {', '.join(matched_patterns[:4])}"
+                if flagged
+                else "No common fake-news red-flag patterns detected"
+            ),
+            "matched_patterns": matched_patterns,
+        }
 
-            log_check(
-                headline,
-                "FAKE",
-                "flagged",
-                reason
-            )
-
-            return jsonify({
-                "headline": headline,
-                "verdict": "FAKE",
-                "mode": "flagged",
-                "reason": reason
+        if flagged:
+            score_fake += 2
+            evidence.append({
+                "label": "Red-flag patterns",
+                "detail": ", ".join(matched_patterns[:5]),
+                "url": None,
+                "type": "red_flag",
             })
 
-        # ====================================================
-        # LAYER 4
-        # LLM ANALYSIS
-        # ====================================================
-
+        # ----------------------------------------------------
+        # LAYER 4 — LLM Reasoning
+        # ----------------------------------------------------
         llm_result = analyze_with_llm(headline)
+        llm_available = bool(llm_result.get("available"))
+        llm_verdict = llm_result.get("verdict")
+        llm_reason = llm_result.get("reason", "")
+        llm_provider = llm_result.get("provider")
 
-        if (
-            llm_result.get("available")
-            and
-            llm_result.get("verdict") == "IMPLAUSIBLE"
-        ):
-            reason = llm_result.get(
-                "reason",
-                "The AI reasoning layer found the headline implausible."
-            )
-
-            log_check(
-                headline,
-                "FAKE",
-                "llm_flagged",
-                reason
-            )
-
-            return jsonify({
-                "headline": headline,
-                "verdict": "FAKE",
-                "mode": "llm_flagged",
-                "reason": reason
+        if not llm_available:
+            llm_status = "skipped"
+            llm_detail = llm_reason or "No LLM API key configured"
+        elif llm_verdict == "IMPLAUSIBLE":
+            llm_status = "flagged"
+            llm_detail = llm_reason
+            score_fake += 2
+            evidence.append({
+                "label": f"AI Reasoning ({llm_provider})",
+                "detail": llm_reason,
+                "url": None,
+                "type": "llm",
             })
+        else:
+            llm_status = "plausible"
+            llm_detail = llm_reason or "Claim appears plausible"
+            score_real += 1
 
-        # ====================================================
-        # LAYER 5
-        # ML / DL MODEL
-        # ====================================================
+        layers["llm_reasoning"] = {
+            "name": "AI Reasoning",
+            "status": llm_status,
+            "detail": llm_detail,
+            "verdict": llm_verdict,
+            "provider": llm_provider,
+        }
 
+        # ----------------------------------------------------
+        # LAYER 5 — ML / DL Model
+        # ----------------------------------------------------
         model_result = predict_headlines(
             [headline],
             best_model
         )[0]
 
         prediction = str(
-            model_result.get(
-                "prediction",
-                "UNVERIFIED"
-            )
+            model_result.get("prediction", "UNVERIFIED")
         ).upper()
-
         confidence = model_result.get("confidence")
 
+        # Normalize confidence to 0-1 if it comes as percentage
+        conf_val = confidence
+        if conf_val is not None:
+            try:
+                conf_val = float(conf_val)
+                if conf_val > 1.0:
+                    conf_val = conf_val / 100.0
+            except (TypeError, ValueError):
+                conf_val = None
+
+        if prediction == "REAL":
+            score_real += 1 if (conf_val is None or conf_val < 0.7) else 2
+        elif prediction == "FAKE":
+            score_fake += 1 if (conf_val is None or conf_val < 0.7) else 2
+
+        layers["ml_model"] = {
+            "name": "ML Prediction",
+            "status": "completed",
+            "detail": f"Model predicted {prediction}"
+                      + (f" ({round(conf_val * 100, 1)}%)" if conf_val is not None else ""),
+            "prediction": prediction,
+            "confidence": conf_val,
+            "model_used": model_name,
+        }
+
+        # ====================================================
+        # Final 3-way verdict
+        # ====================================================
+        # Strong positive → Likely Real
+        # Strong negative → Suspicious
+        # Otherwise → Uncertain
+
+        if score_real >= 3 and score_fake == 0:
+            final_verdict = "Likely Real"
+            final_label = "REAL"
+            confidence_label = "High"
+        elif score_fake >= 3 and score_real == 0:
+            final_verdict = "Suspicious"
+            final_label = "FAKE"
+            confidence_label = "High"
+        elif score_real > score_fake and score_real >= 2:
+            final_verdict = "Likely Real"
+            final_label = "REAL"
+            confidence_label = "Medium"
+        elif score_fake > score_real and score_fake >= 2:
+            final_verdict = "Suspicious"
+            final_label = "FAKE"
+            confidence_label = "Medium"
+        else:
+            final_verdict = "Uncertain"
+            final_label = "UNVERIFIED"
+            confidence_label = "Low"
+
+        # Decide primary mode for history (most decisive layer)
+        if is_verified:
+            mode = "verified"
+        elif fact_status in ("flagged_fake", "confirmed_real"):
+            mode = "fact_checked"
+        elif flagged:
+            mode = "flagged"
+        elif llm_status == "flagged":
+            mode = "llm_flagged"
+        else:
+            mode = "unverified"
+
+        reason_parts = []
+        if is_verified:
+            reason_parts.append("Matched trusted news sources")
+        if fact_status == "flagged_fake":
+            reason_parts.append("Professional fact-checkers rated it false/misleading")
+        elif fact_status == "confirmed_real":
+            reason_parts.append("Professional fact-checkers rated it true")
+        if flagged:
+            reason_parts.append("Contains common fake-news red-flag patterns")
+        if llm_status == "flagged":
+            reason_parts.append("AI reasoning found the claim implausible")
+        if not reason_parts:
+            reason_parts.append(
+                f"Model prediction: {prediction}"
+                + (f" ({round(conf_val * 100, 1)}% confidence)" if conf_val else "")
+            )
+
+        reason = ". ".join(reason_parts) + "."
+
+        # Log (keep old schema for history)
         log_check(
             headline,
-            prediction,
-            "unverified",
-            f"confidence: {confidence}"
+            final_label,
+            mode,
+            reason[:500]
         )
 
         return jsonify({
             "headline": headline,
-            "verdict": prediction,
-            "mode": "unverified",
-            "confidence": confidence,
-            "model_used": model_name
+            "verdict": final_verdict,          # 3-way: Likely Real / Suspicious / Uncertain
+            "verdict_label": final_label,      # REAL / FAKE / UNVERIFIED (for compatibility)
+            "confidence_label": confidence_label,
+            "mode": mode,
+            "reason": reason,
+            "score": {
+                "real_signals": score_real,
+                "fake_signals": score_fake,
+            },
+            "layers": layers,                  # detailed per-layer report
+            "evidence": evidence,              # sources + fact-check links
+            "model_used": model_name,
+            "model_confidence": conf_val,
         })
 
     except Exception as e:
