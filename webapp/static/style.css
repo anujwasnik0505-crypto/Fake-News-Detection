@@ -4096,3 +4096,145 @@ body.light-theme .accuracy-tip {
 body.light-theme .layer-bar-row {
     border-bottom-color: rgba(15,23,42,0.06);
 }
+
+
+/* Live feed with images */
+.feed-item {
+    display: flex !important;
+    gap: 14px !important;
+    align-items: flex-start !important;
+}
+.feed-thumb {
+    width: 88px;
+    height: 66px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.feed-item-body {
+    flex: 1;
+    min-width: 0;
+}
+body.light-theme .feed-thumb {
+    background: #e2e8f0;
+    border-color: rgba(15,23,42,0.08);
+}
+
+
+/* All refresh as circle */
+#historyRefreshBtn.refresh-circle-btn,
+.refresh-circle-btn {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: #a5b4c8 !important;
+    cursor: pointer;
+}
+.live-feed-panel .refresh-circle-btn {
+    position: absolute !important;
+    top: 16px !important;
+    left: 16px !important;
+}
+.refresh-circle-btn:hover {
+    background: rgba(37,99,235,0.2) !important;
+    color: #93c5fd !important;
+    transform: rotate(180deg);
+}
+body.light-theme .refresh-circle-btn {
+    background: #f1f5f9 !important;
+    border-color: rgba(15,23,42,0.12) !important;
+    color: #475569 !important;
+}
+
+/* Dashboard bigger fonts */
+#dashboardSection .hero h2 {
+    font-size: 34px !important;
+    line-height: 1.2 !important;
+}
+#dashboardSection .hero p {
+    font-size: 16px !important;
+}
+#dashboardSection .hero-badge {
+    font-size: 12px !important;
+}
+#dashboardSection .quick-title {
+    font-size: 16px !important;
+}
+#dashboardSection .quick-description {
+    font-size: 13px !important;
+}
+#dashboardSection .quick-icon {
+    font-size: 22px !important;
+}
+
+/* Live feed images */
+.feed-item {
+    display: flex !important;
+    gap: 14px !important;
+    align-items: flex-start !important;
+}
+.feed-thumb,
+.feed-thumb-placeholder {
+    width: 88px !important;
+    height: 66px !important;
+    border-radius: 10px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.feed-thumb-placeholder {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #60a5fa;
+    background: linear-gradient(135deg, rgba(37,99,235,0.2), rgba(14,165,233,0.1));
+}
+body.light-theme .feed-thumb-placeholder {
+    color: #2563eb;
+    background: linear-gradient(135deg, #dbeafe, #e0f2fe);
+    border-color: rgba(15,23,42,0.08);
+}
+
+/* Chat on mobile - move up so visible */
+.chat-toggle {
+    bottom: 88px !important;
+}
+@media (max-width: 640px) {
+    .chat-toggle {
+        bottom: 100px !important;
+        right: 16px !important;
+        width: 54px !important;
+        height: 54px !important;
+        font-size: 22px !important;
+        z-index: 1800 !important;
+    }
+    .chatbot.fullpage-mode .chat-window {
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
+    }
+    .chatbot.fullpage-mode .chat-form {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+/* Hide analytics/history on default dashboard load */
+#analyticsSection:not(.full-page-view),
+#historySection:not(.full-page-view) {
+    /* controlled by JS display */
+}

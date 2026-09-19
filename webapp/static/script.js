@@ -49,7 +49,7 @@ function escapeText(value) {
 ========================================================= */
 
 function setFullPageSection(sectionName) {
-    var sections = [
+    var all = [
         "dashboardSection",
         "verifySection",
         "explainSection",
@@ -58,34 +58,75 @@ function setFullPageSection(sectionName) {
         "historySection"
     ];
 
-    // default: show all for scroll layout unless full-page mode requested
-    var fullOnly = ["analytics", "history"];
+    function show(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.display = "block";
+            el.classList.add("full-page-view");
+        }
+    }
+    function hide(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.display = "none";
+            el.classList.remove("full-page-view");
+        }
+    }
+    function hideAll() {
+        all.forEach(hide);
+    }
 
-    if (fullOnly.indexOf(sectionName) !== -1) {
-        sections.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            if (
-                (sectionName === "analytics" && id === "analyticsSection") ||
-                (sectionName === "history" && id === "historySection")
-            ) {
-                el.style.display = "block";
-                el.classList.add("full-page-view");
-            } else {
-                el.style.display = "none";
-                el.classList.remove("full-page-view");
-            }
-        });
+    if (sectionName === "analytics") {
+        hideAll();
+        show("analyticsSection");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+    }
+    if (sectionName === "history") {
+        hideAll();
+        show("historySection");
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
     }
 
-    // restore normal multi-section view
-    sections.forEach(function(id) {
+    // Dashboard home: hero + verify + 5 layers + explainable AI
+    if (sectionName === "dashboard" || sectionName === "verify") {
+        hideAll();
+        show("dashboardSection");
+        show("verifySection");
+        show("layersSection");
+        show("explainSection");
+        // remove full-page-view on these so they flow normally
+        ["dashboardSection","verifySection","layersSection","explainSection"].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.remove("full-page-view");
+        });
+        if (sectionName === "verify") {
+            var vs = document.getElementById("verifySection");
+            if (vs) vs.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+    }
+
+    if (sectionName === "explain") {
+        hideAll();
+        show("explainSection");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+    }
+
+    // default restore
+    all.forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
-        el.style.display = "";
-        el.classList.remove("full-page-view");
+        if (id === "analyticsSection" || id === "historySection") {
+            el.style.display = "none";
+        } else {
+            el.style.display = "";
+            el.classList.remove("full-page-view");
+        }
     });
 }
 
@@ -2240,25 +2281,19 @@ async function loadStats() {
 
 
         if (statTotal) {
-
-            statTotal.textContent =
-                total;
-        try { updateAnalyticsProUI(statTotal.textContent, statReal && statReal.textContent, statFake && statFake.textContent); } catch(e) {}
+            statTotal.textContent = total;
         }
-
-
         if (statReal) {
-
-            statReal.textContent =
-                real;
+            statReal.textContent = real;
         }
-
-
         if (statFake) {
-
-            statFake.textContent =
-                fake;
+            statFake.textContent = fake;
         }
+        try {
+            if (typeof updateAnalyticsProUI === "function") {
+                updateAnalyticsProUI(total, real, fake);
+            }
+        } catch (e) {}
 
 
     } catch (error) {
@@ -2276,13 +2311,15 @@ async function loadStats() {
 ========================================================= */
 
 async function loadLiveFeed() {
+    /* images enhanced after render */
+
 
     if (!liveFeed) {
         return;
     }
 
 
-    liveFeed.innerHTML = `
+    /* feed html set */ liveFeed.innerHTML = `
         <div class="feed-empty">
             Loading live headlines...
         </div>
@@ -2325,7 +2362,7 @@ async function loadLiveFeed() {
         );
 
 
-        liveFeed.innerHTML = `
+        /* feed html set */ liveFeed.innerHTML = `
             <div class="feed-empty">
                 Could not load live news.
             </div>
@@ -2347,7 +2384,7 @@ function renderLiveFeed(
     }
 
 
-    liveFeed.innerHTML =
+    /* feed html set */ liveFeed.innerHTML =
         "";
 
 
@@ -2356,7 +2393,7 @@ function renderLiveFeed(
         results.length === 0
     ) {
 
-        liveFeed.innerHTML = `
+        /* feed html set */ liveFeed.innerHTML = `
             <div class="feed-empty">
                 No live headlines available.
             </div>
@@ -2375,111 +2412,58 @@ function renderLiveFeed(
                 );
 
 
-            row.className =
-                "feed-item";
+            row.className = "feed-item";
 
-
-            const top =
-                document.createElement(
-                    "div"
-                );
-
-
-            top.className =
-                "feed-top";
-
-
-            const title =
-                document.createElement(
-                    "div"
-                );
-
-
-            title.className =
-                "feed-title";
-
-
-            title.textContent =
-                item.headline ||
-                item.title ||
-                "Unknown headline";
-
-
-            const verdict =
-                String(
-                    item.prediction ||
-                    item.verdict ||
-                    "UNKNOWN"
-                ).toUpperCase();
-
-
-            const badge =
-                document.createElement(
-                    "div"
-                );
-
-
-            badge.className =
-                "feed-verdict " +
-                (
-                    verdict === "REAL"
-                        ? "real"
-                        : verdict === "FAKE"
-                            ? "fake"
-                            : ""
-                );
-
-
-            badge.textContent =
-                verdict;
-
-
-            top.appendChild(
-                title
-            );
-
-            top.appendChild(
-                badge
-            );
-
-            row.appendChild(
-                top
-            );
-
-
-            if (
-                item.confidence !==
-                    undefined &&
-                item.confidence !==
-                    null
-            ) {
-
-                const meta =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                meta.className =
-                    "feed-meta";
-
-
-                meta.textContent =
-                    "Model confidence: " +
-                    formatConfidence(
-                        item.confidence
-                    );
-
-
-                row.appendChild(
-                    meta
-                );
+            var imgUrl = (item && (item.image || item.image_url || item.urlToImage || item.thumbnail || item.img)) || null;
+            if (imgUrl) {
+                var thumb = document.createElement("img");
+                thumb.className = "feed-thumb";
+                thumb.alt = "";
+                thumb.loading = "lazy";
+                thumb.src = imgUrl;
+                thumb.onerror = function() {
+                    var ph = document.createElement("div");
+                    ph.className = "feed-thumb feed-thumb-placeholder";
+                    ph.textContent = ((item.headline || item.title || "N") + "").charAt(0).toUpperCase();
+                    thumb.replaceWith(ph);
+                };
+                row.appendChild(thumb);
+            } else {
+                var ph = document.createElement("div");
+                ph.className = "feed-thumb feed-thumb-placeholder";
+                ph.textContent = ((item.headline || item.title || "N") + "").charAt(0).toUpperCase();
+                row.appendChild(ph);
             }
 
+            var bodyWrap = document.createElement("div");
+            bodyWrap.className = "feed-item-body";
 
-            liveFeed.appendChild(
-                row
-            );
+            const top = document.createElement("div");
+            top.className = "feed-top";
+
+            const title = document.createElement("div");
+            title.className = "feed-title";
+            title.textContent = item.headline || item.title || "Unknown headline";
+
+            const verdict = String(item.prediction || item.verdict || "UNKNOWN").toUpperCase();
+
+            const badge = document.createElement("div");
+            badge.className = "feed-verdict " + (verdict === "REAL" ? "real" : verdict === "FAKE" ? "fake" : "");
+            badge.textContent = verdict;
+
+            top.appendChild(title);
+            top.appendChild(badge);
+            bodyWrap.appendChild(top);
+
+            if (item.confidence !== undefined && item.confidence !== null) {
+                const meta = document.createElement("div");
+                meta.className = "feed-meta";
+                meta.textContent = "Model confidence: " + formatConfidence(item.confidence);
+                bodyWrap.appendChild(meta);
+            }
+
+            row.appendChild(bodyWrap);
+            liveFeed.appendChild(row);
         }
     );
 }
@@ -3715,4 +3699,60 @@ function updateAnalyticsProUI(total, real, fake) {
         }
     }
     setInterval(sync, 1500);
+})();
+
+
+/* Live feed image helper */
+function getFeedImageUrl(item) {
+    if (!item) return null;
+    return item.image || item.image_url || item.urlToImage || item.thumbnail || item.img || null;
+}
+
+function enhanceFeedItemsWithImages() {
+    var container = document.getElementById("liveFeed");
+    if (!container) return;
+    var items = container.querySelectorAll(".feed-item");
+    items.forEach(function(row) {
+        if (row.querySelector(".feed-thumb")) return;
+        var imgUrl = row.getAttribute("data-image") || row.dataset.image;
+        // try find link to use placeholder based on domain - skip if none
+        if (!imgUrl) {
+            // leave without image
+            return;
+        }
+        var img = document.createElement("img");
+        img.className = "feed-thumb";
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = imgUrl;
+        img.onerror = function() { img.style.display = "none"; };
+        row.insertBefore(img, row.firstChild);
+        row.classList.add("feed-item-with-img");
+    });
+}
+
+(function wrapLiveFeedImages() {
+    var orig = window.loadLiveFeed;
+    if (typeof orig !== "function") return;
+    window.loadLiveFeed = async function() {
+        var result = await orig.apply(this, arguments);
+        setTimeout(function() {
+            try {
+                var container = document.getElementById("liveFeed");
+                if (!container) return;
+                // If items have data from API stored in dataset later
+                container.querySelectorAll(".feed-item").forEach(function(row) {
+                    if (row.querySelector(".feed-thumb")) return;
+                    // Try og-style placeholder: use first letter block
+                    var titleEl = row.querySelector(".feed-title, .history-headline, a, strong, div");
+                    var letter = (titleEl && titleEl.textContent || "?").trim().charAt(0).toUpperCase();
+                    var ph = document.createElement("div");
+                    ph.className = "feed-thumb feed-thumb-placeholder";
+                    ph.textContent = letter || "N";
+                    row.insertBefore(ph, row.firstChild);
+                });
+            } catch (e) {}
+        }, 300);
+        return result;
+    };
 })();
