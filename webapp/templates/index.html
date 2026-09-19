@@ -316,71 +316,65 @@
 
     <section
         id="dashboardSection"
-        class="page-section"
+        class="page-section dashboard-fullscreen"
     >
 
-        <section class="hero">
+        <section class="hero dashboard-hero">
+
+            <div class="hero-glow" aria-hidden="true"></div>
 
             <div class="hero-badge">
                 5-LAYER FAKE NEWS DETECTION
             </div>
 
-            <h2>
+            <h2 class="hero-title">
                 Verify before you believe.
             </h2>
 
-            <p>
-                Analyze news headlines using trusted sources,
-                fact-checking databases, AI reasoning and
-                machine learning.
+            <p class="hero-subtitle">
+                AI-powered news verification with trusted sources,
+                fact-check databases, plausibility rules, LLM reasoning
+                and machine learning — all in one pipeline.
             </p>
+
+            <div class="hero-actions">
+                <button type="button" class="hero-btn primary" data-section="verify" id="heroVerifyBtn">
+                    Verify News →
+                </button>
+                <button type="button" class="hero-btn secondary" data-section="live" id="heroLiveBtn">
+                    Live Feed
+                </button>
+            </div>
 
         </section>
 
 
         <!-- DASHBOARD QUICK CARDS -->
 
-        <section class="quick-grid">
+        <section class="quick-grid dashboard-cards">
 
-            <button
-                type="button"
-                class="quick-card"
-                data-section="verify"
-            >
-
-                <span class="quick-icon">
-                    ⌕
-                </span>
-
-                <span class="quick-title">
-                    Verify News
-                </span>
-
-                <span class="quick-description">
-                    Check a headline using the 5-layer system.
-                </span>
-
+            <button type="button" class="quick-card dash-card" data-section="verify">
+                <span class="quick-icon">⌕</span>
+                <span class="quick-title">Verify News</span>
+                <span class="quick-description">Headline, URL, Hindi text or screenshot</span>
             </button>
 
+            <button type="button" class="quick-card dash-card" data-section="live">
+                <span class="quick-icon">◉</span>
+                <span class="quick-title">Live Feed</span>
+                <span class="quick-description">Latest headlines classified in real time</span>
+            </button>
 
-            <button
-                type="button"
-                class="quick-card"
-                data-section="live"
-            >
+            <button type="button" class="quick-card dash-card" data-section="analytics">
+                <span class="quick-icon">▥</span>
+                <span class="quick-title">Analytics</span>
+                <span class="quick-description">Your verification stats at a glance</span>
+            </button>
 
-                <span class="quick-icon">
-                    ◉
-                </span>
-
-                <span class="quick-title">
-                    Live Feed
-                </span>
-
-                <span class="quick-description">
-                    View latest headlines classified by the model.
-                </span>
-
+            <button type="button" class="quick-card dash-card" data-section="history">
+                <span class="quick-icon">◷</span>
+                <span class="quick-title">History</span>
+                <span class="quick-description">Past checks and verdicts</span>
             </button>
 
         </section>
@@ -1791,10 +1785,20 @@
         aria-label="Open VeriQuest AI"
         title="VeriQuest AI"
     >
-        <span class="gemini-orb" aria-hidden="true">
-            <span class="gemini-orb-core"></span>
-            <span class="gemini-orb-ring"></span>
-        </span>
+        <!-- Gemini sparkle — matches provided logo image -->
+        <svg class="gemini-logo" viewBox="0 0 64 64" width="36" height="36" aria-hidden="true">
+            <defs>
+                <linearGradient id="geminiStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4C8BF5"/>
+                    <stop offset="50%" stop-color="#6B7CFF"/>
+                    <stop offset="100%" stop-color="#A78BFA"/>
+                </linearGradient>
+            </defs>
+            <path
+                fill="url(#geminiStarGrad)"
+                d="M32 4 C33.5 18 46 30.5 60 32 C46 33.5 33.5 46 32 60 C30.5 46 18 33.5 4 32 C18 30.5 30.5 18 32 4 Z"
+            />
+        </svg>
     </button>
 
 </div>

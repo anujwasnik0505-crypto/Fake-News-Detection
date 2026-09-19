@@ -76,6 +76,10 @@ function setFullPageSection(sectionName) {
         all.forEach(hide);
     }
 
+    // Close overlay panels when switching main sections
+    if (typeof closeLiveFeedPanel === "function") closeLiveFeedPanel();
+    if (typeof closeSettingsPanel === "function") closeSettingsPanel();
+
     if (sectionName === "analytics") {
         hideAll();
         show("analyticsSection");
@@ -89,21 +93,27 @@ function setFullPageSection(sectionName) {
         return;
     }
 
-    // Dashboard home: hero + verify + 5 layers + explainable AI
+    // Dashboard + Verify News together (pehle jaisa) + 5 layers
     if (sectionName === "dashboard" || sectionName === "verify") {
         hideAll();
         show("dashboardSection");
         show("verifySection");
         show("layersSection");
-        show("explainSection");
-        // remove full-page-view on these so they flow normally
-        ["dashboardSection","verifySection","layersSection","explainSection"].forEach(function(id) {
+        ["dashboardSection", "verifySection", "layersSection"].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.classList.remove("full-page-view");
         });
+        var dash = document.getElementById("dashboardSection");
+        if (dash) dash.classList.remove("dashboard-fullscreen");
+
         if (sectionName === "verify") {
             var vs = document.getElementById("verifySection");
-            if (vs) vs.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (vs) {
+                vs.style.display = "block";
+                setTimeout(function () {
+                    vs.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 50);
+            }
         } else {
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -117,17 +127,11 @@ function setFullPageSection(sectionName) {
         return;
     }
 
-    // default restore
-    all.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        if (id === "analyticsSection" || id === "historySection") {
-            el.style.display = "none";
-        } else {
-            el.style.display = "";
-            el.classList.remove("full-page-view");
-        }
-    });
+    // default → dashboard + verify
+    hideAll();
+    show("dashboardSection");
+    show("verifySection");
+    show("layersSection");
 }
 
 
@@ -584,9 +588,7 @@ sidebarItems.forEach(
 
                     closeSidebar();
 
-                    scrollToSection(
-                        explainSection
-                    );
+                    setFullPageSection("explain");
 
                     return;
                 }
@@ -716,9 +718,7 @@ quickCards.forEach(
                     "verify"
                 ) {
 
-                    scrollToSection(
-                        verifySection
-                    );
+                    setFullPageSection("verify");
 
                 } else if (
                     section ===
@@ -732,9 +732,7 @@ quickCards.forEach(
                     "analytics"
                 ) {
 
-                    scrollToSection(
-                        analyticsSection
-                    );
+                    setFullPageSection("analytics");
 
                 } else if (
                     section ===
@@ -1539,9 +1537,12 @@ function renderLayerReport(layers) {
 
     if (!layers || typeof layers !== "object") {
         layerBox.style.display = "none";
+        layerBox.classList.add("hidden");
         return;
     }
 
+    // Show layer-by-layer report (all 5 layers) — sources stay after this
+    layerBox.classList.remove("hidden");
     layerBox.style.display = "block";
 
     const order = [
@@ -3726,10 +3727,9 @@ document.addEventListener(
          */
         loadLiveFeed();
 
-
-        setActiveSidebarItem(
-            "dashboard"
-        );
+        // Dashboard + Verify News together (original layout)
+        setFullPageSection("dashboard");
+        setActiveSidebarItem("dashboard");
     }
 );
 
@@ -3955,3 +3955,19 @@ function enhanceFeedItemsWithImages() {
         return result;
     };
 })();
+
+/* Hero CTA buttons on dashboard */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".hero-btn[data-section]").forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            var section = btn.dataset.section;
+            setActiveSidebarItem(section);
+            if (section === "verify") setFullPageSection("verify");
+            else if (section === "live") openLiveFeed();
+            else if (section === "analytics") setFullPageSection("analytics");
+            else if (section === "history") setFullPageSection("history");
+            else if (section === "dashboard") setFullPageSection("dashboard");
+        });
+    });
+});
