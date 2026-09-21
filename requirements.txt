@@ -13,3 +13,16 @@ requests
 python-dotenv
 lime
 shap
+
+# Phase 2 — Article fetch + language
+trafilatura
+newspaper3k
+beautifulsoup4
+lxml
+langdetect
+deep-translator
+
+# Phase 3 — Image OCR (pick at least one)
+Pillow
+pytesseract
+# easyocr   # optional, heavier; uncomment if you prefer pure-Python OCR
