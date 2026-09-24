@@ -756,6 +756,9 @@ def api_check_url():
     url = str(data.get("url") or "").strip()
     if not url:
         return jsonify({"error": "URL is required"}), 400
+    # Auto-add https:// if missing
+    if not url.lower().startswith(("http://", "https://")):
+        url = "https://" + url
 
     try:
         article = fetch_article(url)
@@ -763,6 +766,7 @@ def api_check_url():
             return jsonify({
                 "error": article.get("error") or "Fetch failed",
                 "url": url,
+                "hint": "Try a public news article URL. Paywalled or JS-only pages may fail.",
             }), 422
 
         title = article.get("title") or ""
@@ -848,11 +852,12 @@ def api_check_image():
             }), 400
 
         ocr = extract_text_from_image(image_bytes)
-        if not ocr.get("ok") or not ocr.get("text"):
+        if not ocr.get("ok") or not (ocr.get("text") or "").strip():
             return jsonify({
-                "error": ocr.get("error") or "OCR failed / no text found",
+                "error": ocr.get("error") or "OCR failed / no text found in image",
                 "ocr": ocr,
                 "backends": available_backends(),
+                "hint": "Add Aptfile (tesseract-ocr) to repo root and redeploy. Or use Headline / URL tab.",
             }), 422
 
         text = ocr["text"]

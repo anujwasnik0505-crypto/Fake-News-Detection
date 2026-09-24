@@ -935,14 +935,26 @@ if (verifyForm) {
                         method: "POST",
                         body: formData,
                     });
-                    data = await response.json();
-                    currentHeadline = (data.headline || data.ocr && data.ocr.full_text || "").slice(0, 200);
+                    try {
+                        data = await response.json();
+                    } catch (_) {
+                        throw new Error("Server returned invalid response for image check.");
+                    }
+                    if (!response.ok) {
+                        var imgErr = (data && data.error) || "Image verification failed.";
+                        if (data && data.hint) imgErr += " — " + data.hint;
+                        throw new Error(imgErr);
+                    }
+                    currentHeadline = (data.headline || (data.ocr && data.ocr.full_text) || "").slice(0, 200);
 
                 } else if (currentInputMode === "url") {
-                    const url = (urlInput && urlInput.value || "").trim();
+                    let url = (urlInput && urlInput.value || "").trim();
                     if (!url) {
                         if (urlInput) urlInput.focus();
                         throw new Error("Please enter a news URL.");
+                    }
+                    if (!/^https?:\/\//i.test(url)) {
+                        url = "https://" + url;
                     }
                     response = await fetch("/api/check-url", {
                         method: "POST",
@@ -952,7 +964,17 @@ if (verifyForm) {
                             extract_claims: true,
                         }),
                     });
-                    data = await response.json();
+                    try {
+                        data = await response.json();
+                    } catch (_) {
+                        throw new Error("Server returned invalid response for URL check.");
+                    }
+                    if (!response.ok) {
+                        throw new Error(
+                            (data && (data.error || data.hint)) ||
+                            "URL verification failed."
+                        );
+                    }
                     currentHeadline = data.headline || url;
 
                 } else {
@@ -1740,19 +1762,19 @@ function showErrorResult(
 
 
     verdictText.textContent =
-        "ERROR";
+        "Setup needed";
 
 
     verdictIcon.textContent =
-        "!";
+        "⚠";
 
 
     resultHeadline.textContent =
-        currentHeadline;
+        currentHeadline || "Image / URL check";
 
 
     resultMode.textContent =
-        "Verification Error";
+        "Could not complete verification";
 
 
     hide(publisherRow);

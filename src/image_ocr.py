@@ -1,391 +1,186 @@
 """
 Phase-3: Image / screenshot / meme → text via OCR.
 
-Supports:
-- pytesseract + system Tesseract OCR
-- easyocr as fallback
+Backends (in order):
+1. Tesseract (if binary installed on server)
+2. Gemini Vision API (if GEMINI_API_KEY set) — works on Render WITHOUT Docker
+3. EasyOCR (if installed — heavy)
 
-Works on:
-- Windows (local development)
-- Linux / Render deployment
-
-Returns extracted text that can then be fed into the normal
-headline / claim verification pipeline.
+No system packages required when GEMINI_API_KEY is configured.
 """
 
 from __future__ import annotations
 
+import base64
 import io
 import os
-import shutil
-import subprocess
 import tempfile
-from typing import Optional
 
-# ============================================================
-# OPTIONAL IMPORTS
-# ============================================================
+import requests
+
+HAS_TESSERACT = False
+HAS_PIL = False
+HAS_EASYOCR = False
+_easyocr_reader = None
+
+try:
+    from PIL import Image, ImageOps
+    HAS_PIL = True
+except ImportError:
+    pass
 
 try:
     import pytesseract
-    from PIL import Image
-
-    HAS_PYTESSERACT = True
+    HAS_TESSERACT = True
 except ImportError:
-    pytesseract = None
-    Image = None
-    HAS_PYTESSERACT = False
-
+    pass
 
 try:
     import easyocr
-
     HAS_EASYOCR = True
-    _easyocr_reader = None
 except ImportError:
-    easyocr = None
-    HAS_EASYOCR = False
-    _easyocr_reader = None
+    pass
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
-# ============================================================
-# TESSERACT CONFIGURATION
-# ============================================================
-
-def _find_tesseract() -> Optional[str]:
-    """
-    Find the Tesseract executable.
-
-    Priority:
-    1. TESSERACT_CMD environment variable
-    2. PATH
-    3. Common Windows installation paths
-    4. Common Linux paths
-    """
-
-    # --------------------------------------------------------
-    # 1. Environment variable
-    # --------------------------------------------------------
-    env_path = os.environ.get("TESSERACT_CMD")
-
-    if env_path:
-        env_path = os.path.expandvars(env_path.strip().strip('"'))
-
-        if os.path.isfile(env_path):
-            return env_path
-
-        found_env = shutil.which(env_path)
-        if found_env:
-            return found_env
-
-    # --------------------------------------------------------
-    # 2. Search PATH
-    # --------------------------------------------------------
-    path_result = shutil.which("tesseract")
-
-    if path_result:
-        return path_result
-
-    # --------------------------------------------------------
-    # 3. Common Windows locations
-    # --------------------------------------------------------
-    windows_paths = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        os.path.expandvars(
-            r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"
-        ),
-    ]
-
-    for path in windows_paths:
-        if os.path.isfile(path):
-            return path
-
-    # --------------------------------------------------------
-    # 4. Common Linux locations
-    # --------------------------------------------------------
-    linux_paths = [
-        "/usr/bin/tesseract",
-        "/usr/local/bin/tesseract",
-        "/opt/homebrew/bin/tesseract",
-    ]
-
-    for path in linux_paths:
-        if os.path.isfile(path):
-            return path
-
-    return None
-
-
-def _configure_tesseract() -> Optional[str]:
-    """
-    Configure pytesseract with the detected Tesseract executable.
-    Returns the executable path if available.
-    """
-
-    if not HAS_PYTESSERACT:
-        return None
-
-    tesseract_path = _find_tesseract()
-
-    if not tesseract_path:
-        return None
-
-    try:
-        pytesseract.pytesseract.tesseract_cmd = tesseract_path
-    except Exception:
-        return None
-
-    return tesseract_path
-
-
-TESSERACT_PATH = _configure_tesseract()
-
-
-# ============================================================
-# TESSERACT VALIDATION
-# ============================================================
-
-def _is_tesseract_available() -> bool:
-    """
-    Check whether the Tesseract executable actually works.
-    """
-
-    if not HAS_PYTESSERACT:
-        return False
-
-    global TESSERACT_PATH
-
-    if not TESSERACT_PATH:
-        TESSERACT_PATH = _configure_tesseract()
-
-    if not TESSERACT_PATH:
-        return False
-
-    try:
-        subprocess.run(
-            [TESSERACT_PATH, "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=10,
-            check=False,
-        )
-
-        return True
-
-    except Exception:
-        return False
-
-
-HAS_TESSERACT = _is_tesseract_available()
-
-
-# ============================================================
-# TESSERACT LANGUAGE DETECTION
-# ============================================================
-
-def _get_tesseract_languages() -> list[str]:
-    """
-    Return installed Tesseract languages.
-    """
-
-    if not HAS_TESSERACT:
-        return []
-
-    try:
-        languages = pytesseract.get_languages(config="")
-        return languages or []
-    except Exception:
-        return []
-
-
-def _select_tesseract_language() -> str:
-    """
-    Select the best available OCR language.
-
-    Preferred:
-        eng+hin
-
-    Fallback:
-        eng
-
-    Final fallback:
-        first available language
-    """
-
-    languages = _get_tesseract_languages()
-
-    if "eng" in languages and "hin" in languages:
-        return "eng+hin"
-
-    if "eng" in languages:
-        return "eng"
-
-    if "hin" in languages:
-        return "hin"
-
-    if languages:
-        return languages[0]
-
-    # If language detection fails, use English.
-    return "eng"
-
-
-# ============================================================
-# EASYOCR
-# ============================================================
 
 def _get_easyocr_reader():
-    """
-    Create EasyOCR reader only when needed.
-    """
-
     global _easyocr_reader
-
     if _easyocr_reader is None and HAS_EASYOCR:
         try:
-            _easyocr_reader = easyocr.Reader(
-                ["en", "hi"],
-                gpu=False,
-                verbose=False,
-            )
+            _easyocr_reader = easyocr.Reader(["en", "hi"], gpu=False, verbose=False)
         except Exception:
-            _easyocr_reader = None
-
+            _easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
     return _easyocr_reader
 
 
-# ============================================================
-# TESSERACT OCR
-# ============================================================
+def _prepare_image(image_bytes):
+    if not HAS_PIL:
+        raise RuntimeError("Pillow not installed. pip install Pillow")
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    w, h = img.size
+    if max(w, h) < 800:
+        scale = max(2, int(800 / max(w, h)))
+        img = img.resize((w * scale, h * scale), Image.Resampling.LANCZOS)
+    try:
+        img = ImageOps.autocontrast(img)
+    except Exception:
+        pass
+    return img
 
-def _ocr_tesseract(image_bytes: bytes) -> str:
-    """
-    Extract text using Tesseract OCR.
-    """
 
-    if not HAS_PYTESSERACT:
-        raise RuntimeError(
-            "pytesseract is not installed."
-        )
-
+def _ocr_tesseract(image_bytes):
     if not HAS_TESSERACT:
-        raise RuntimeError(
-            "Tesseract OCR is not installed or is not available in PATH."
-        )
+        raise RuntimeError("pytesseract not installed")
+    img = _prepare_image(image_bytes)
+    last_err = None
+    for lang in ("eng+hin", "eng"):
+        try:
+            text = pytesseract.image_to_string(img, lang=lang)
+            text = (text or "").strip()
+            if text:
+                return text
+        except Exception as e:
+            last_err = e
+            continue
+    if last_err:
+        raise last_err
+    return ""
 
-    if Image is None:
-        raise RuntimeError(
-            "Pillow is not installed."
-        )
 
-    # --------------------------------------------------------
-    # Make sure Tesseract is configured
-    # --------------------------------------------------------
-    global TESSERACT_PATH
+def _ocr_gemini_vision(image_bytes):
+    """Extract text using Gemini multimodal — no system tesseract needed."""
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY not set")
 
-    if not TESSERACT_PATH:
-        TESSERACT_PATH = _configure_tesseract()
+    # Compress large images to stay under API limits
+    mime = "image/jpeg"
+    b64 = None
+    if HAS_PIL:
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            # max side 1600
+            w, h = img.size
+            max_side = 1600
+            if max(w, h) > max_side:
+                scale = max_side / float(max(w, h))
+                img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            mime = "image/jpeg"
+        except Exception:
+            b64 = None
 
-    if not TESSERACT_PATH:
-        raise RuntimeError(
-            "Tesseract executable could not be found."
-        )
-
-    # --------------------------------------------------------
-    # Open image
-    # --------------------------------------------------------
-    try:
-        img = Image.open(io.BytesIO(image_bytes))
-
-        # Convert problematic image formats to RGB
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
-
-    except Exception as e:
-        raise RuntimeError(
-            f"Unable to open image: {e}"
-        )
-
-    # --------------------------------------------------------
-    # Select installed language
-    # --------------------------------------------------------
-    language = _select_tesseract_language()
-
-    # --------------------------------------------------------
-    # OCR
-    # --------------------------------------------------------
-    try:
-        text = pytesseract.image_to_string(
-            img,
-            lang=language,
-            config="--psm 6",
-        )
-
-    except Exception as e:
-        # ----------------------------------------------------
-        # If Hindi trained data is unavailable, retry English
-        # ----------------------------------------------------
-        if language == "eng+hin":
-            try:
-                text = pytesseract.image_to_string(
-                    img,
-                    lang="eng",
-                    config="--psm 6",
-                )
-            except Exception as second_error:
-                raise RuntimeError(
-                    f"Tesseract OCR failed: {second_error}"
-                )
+    if not b64:
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+        # guess mime
+        if image_bytes[:8].startswith(b"\x89PNG"):
+            mime = "image/png"
+        elif image_bytes[:2] == b"\xff\xd8":
+            mime = "image/jpeg"
         else:
-            raise RuntimeError(
-                f"Tesseract OCR failed: {e}"
-            )
+            mime = "image/jpeg"
 
-    return (text or "").strip()
+    url = (
+        "https://generativelanguage.googleapis.com/"
+        "v1beta/models/gemini-2.0-flash:generateContent"
+    )
+    prompt = (
+        "Extract ALL readable text from this image exactly as written. "
+        "Include headlines, captions, and body text. "
+        "Preserve line breaks where helpful. "
+        "Do not translate. Do not add commentary. "
+        "If the image has no text, reply with exactly: NO_TEXT"
+    )
+    resp = requests.post(
+        url,
+        params={"key": GEMINI_API_KEY},
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 2048,
+            },
+        },
+        timeout=40,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    text = (
+        data.get("candidates", [{}])[0]
+        .get("content", {})
+        .get("parts", [{}])[0]
+        .get("text", "")
+        or ""
+    ).strip()
+    if not text or text.upper() == "NO_TEXT":
+        return ""
+    return text
 
 
-# ============================================================
-# EASYOCR OCR
-# ============================================================
-
-def _ocr_easyocr(image_bytes: bytes) -> str:
-    """
-    Extract text using EasyOCR.
-    """
-
+def _ocr_easyocr(image_bytes):
     reader = _get_easyocr_reader()
-
     if reader is None:
-        raise RuntimeError(
-            "EasyOCR is not available."
-        )
-
-    # EasyOCR can read from a temporary image file.
-    with tempfile.NamedTemporaryFile(
-        suffix=".png",
-        delete=False,
-    ) as tmp:
-
+        raise RuntimeError("easyocr not available")
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp.write(image_bytes)
         tmp_path = tmp.name
-
     try:
-        results = reader.readtext(
-            tmp_path,
-            detail=0,
-            paragraph=True,
-        )
-
-        if not results:
-            return ""
-
-        return "\n".join(
-            str(item).strip()
-            for item in results
-            if str(item).strip()
-        ).strip()
-
+        results = reader.readtext(tmp_path, detail=0, paragraph=True)
+        if isinstance(results, list):
+            return "\n".join(str(r) for r in results).strip()
+        return str(results or "").strip()
     finally:
         try:
             os.unlink(tmp_path)
@@ -393,221 +188,117 @@ def _ocr_easyocr(image_bytes: bytes) -> str:
             pass
 
 
-# ============================================================
-# MAIN OCR FUNCTION
-# ============================================================
-
-def extract_text_from_image(
-    image_bytes: bytes,
-    prefer: str = "auto",
-) -> dict:
+def extract_text_from_image(image_bytes, prefer="auto"):
     """
     Run OCR on image bytes.
 
-    prefer:
-        "tesseract"
-        "easyocr"
-        "auto"
-
-    Returns:
-    {
-        "ok": bool,
-        "text": str,
-        "method": str | None,
-        "error": str | None,
-        "char_count": int,
-    }
+    prefer: "tesseract" | "gemini" | "easyocr" | "auto"
     """
-
-    # --------------------------------------------------------
-    # Empty image check
-    # --------------------------------------------------------
     if not image_bytes:
+        return {
+            "ok": False, "text": "", "method": None,
+            "error": "Empty image data", "char_count": 0,
+        }
+
+    if prefer == "tesseract":
+        order = ["tesseract", "gemini", "easyocr"]
+    elif prefer == "gemini":
+        order = ["gemini", "tesseract", "easyocr"]
+    elif prefer == "easyocr":
+        order = ["easyocr", "gemini", "tesseract"]
+    else:
+        # Prefer Gemini on cloud hosts (no system binary needed), then tesseract
+        order = ["gemini", "tesseract", "easyocr"]
+
+    last_error = None
+    tried = []
+
+    for method in order:
+        try:
+            if method == "gemini":
+                if not GEMINI_API_KEY:
+                    continue
+                tried.append("gemini")
+                text = _ocr_gemini_vision(image_bytes)
+                if text and len(text.strip()) >= 3:
+                    return {
+                        "ok": True,
+                        "text": text.strip(),
+                        "method": "gemini-vision",
+                        "error": None,
+                        "char_count": len(text.strip()),
+                    }
+                last_error = "Gemini Vision found no readable text in the image"
+
+            elif method == "tesseract":
+                if not HAS_TESSERACT or not HAS_PIL:
+                    continue
+                tried.append("tesseract")
+                text = _ocr_tesseract(image_bytes)
+                if text and len(text.strip()) >= 3:
+                    return {
+                        "ok": True,
+                        "text": text.strip(),
+                        "method": "tesseract",
+                        "error": None,
+                        "char_count": len(text.strip()),
+                    }
+                last_error = "Tesseract returned empty text"
+
+            elif method == "easyocr":
+                if not HAS_EASYOCR:
+                    continue
+                tried.append("easyocr")
+                text = _ocr_easyocr(image_bytes)
+                if text and len(text.strip()) >= 3:
+                    return {
+                        "ok": True,
+                        "text": text.strip(),
+                        "method": "easyocr",
+                        "error": None,
+                        "char_count": len(text.strip()),
+                    }
+                last_error = "EasyOCR returned empty text"
+
+        except Exception as e:
+            msg = str(e)
+            if "TesseractNotFound" in msg or "tesseract is not installed" in msg.lower():
+                last_error = "Tesseract binary not on server (skipped)"
+            else:
+                last_error = msg[:200]
+            continue
+
+    if not tried:
         return {
             "ok": False,
             "text": "",
             "method": None,
-            "error": "Empty image.",
+            "error": (
+                "No OCR backend available. "
+                "Set GEMINI_API_KEY in Render Environment (easiest), "
+                "or install Tesseract via Docker."
+            ),
             "char_count": 0,
+            "backends": available_backends(),
         }
-
-    # --------------------------------------------------------
-    # Normalize preference
-    # --------------------------------------------------------
-    prefer = (prefer or "auto").lower().strip()
-
-    if prefer not in {
-        "auto",
-        "tesseract",
-        "easyocr",
-    }:
-        prefer = "auto"
-
-    # --------------------------------------------------------
-    # Decide OCR order
-    # --------------------------------------------------------
-    if prefer == "tesseract":
-        order = [
-            "tesseract",
-            "easyocr",
-        ]
-
-    elif prefer == "easyocr":
-        order = [
-            "easyocr",
-            "tesseract",
-        ]
-
-    else:
-        # Tesseract is lightweight, so use it first.
-        order = [
-            "tesseract",
-            "easyocr",
-        ]
-
-    # --------------------------------------------------------
-    # Try OCR backends
-    # --------------------------------------------------------
-    errors = []
-
-    for method in order:
-
-        # ====================================================
-        # TESSERACT
-        # ====================================================
-        if method == "tesseract":
-
-            if not HAS_PYTESSERACT:
-                errors.append(
-                    "pytesseract is not installed."
-                )
-                continue
-
-            if not HAS_TESSERACT:
-                errors.append(
-                    "Tesseract OCR is not installed or is not in PATH."
-                )
-                continue
-
-            try:
-                text = _ocr_tesseract(image_bytes)
-
-                if text:
-                    return {
-                        "ok": True,
-                        "text": text,
-                        "method": "tesseract",
-                        "error": None,
-                        "char_count": len(text),
-                    }
-
-                errors.append(
-                    "Tesseract ran successfully but no text was detected."
-                )
-
-            except Exception as e:
-                errors.append(
-                    f"Tesseract: {str(e)}"
-                )
-
-        # ====================================================
-        # EASYOCR
-        # ====================================================
-        elif method == "easyocr":
-
-            if not HAS_EASYOCR:
-                errors.append(
-                    "EasyOCR is not installed."
-                )
-                continue
-
-            try:
-                text = _ocr_easyocr(image_bytes)
-
-                if text:
-                    return {
-                        "ok": True,
-                        "text": text,
-                        "method": "easyocr",
-                        "error": None,
-                        "char_count": len(text),
-                    }
-
-                errors.append(
-                    "EasyOCR ran successfully but no text was detected."
-                )
-
-            except Exception as e:
-                errors.append(
-                    f"EasyOCR: {str(e)}"
-                )
-
-    # ========================================================
-    # ALL OCR METHODS FAILED
-    # ========================================================
-
-    if errors:
-        error_message = " | ".join(errors)
-    else:
-        error_message = (
-            "No OCR backend is available. "
-            "Install pytesseract + Tesseract OCR or EasyOCR."
-        )
 
     return {
         "ok": False,
         "text": "",
         "method": None,
-        "error": error_message,
+        "error": last_error or "OCR failed",
         "char_count": 0,
+        "backends": available_backends(),
+        "tried": tried,
     }
 
 
-# ============================================================
-# BACKEND INFORMATION
-# ============================================================
-
-def available_backends() -> list:
-    """
-    Return currently available OCR backends.
-    """
-
+def available_backends():
     backends = []
-
-    if HAS_TESSERACT:
+    if GEMINI_API_KEY:
+        backends.append("gemini-vision")
+    if HAS_TESSERACT and HAS_PIL:
         backends.append("tesseract")
-
     if HAS_EASYOCR:
         backends.append("easyocr")
-
     return backends
-
-
-# ============================================================
-# OCR STATUS
-# ============================================================
-
-def ocr_status() -> dict:
-    """
-    Return useful diagnostic information.
-
-    Helpful for debugging Render/local deployment.
-    """
-
-    languages = []
-
-    if HAS_TESSERACT:
-        languages = _get_tesseract_languages()
-
-    return {
-        "tesseract": {
-            "python_package": HAS_PYTESSERACT,
-            "executable": HAS_TESSERACT,
-            "path": TESSERACT_PATH,
-            "languages": languages,
-        },
-        "easyocr": {
-            "available": HAS_EASYOCR,
-        },
-        "backends": available_backends(),
-    }
