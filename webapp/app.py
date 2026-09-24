@@ -338,6 +338,10 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     llm_verdict = llm_result.get("verdict")
     llm_reason = llm_result.get("reason", "")
     llm_provider = llm_result.get("provider")
+    llm_confidence = llm_result.get("confidence")
+    llm_summary = llm_result.get("summary", "")
+    llm_main_claim = llm_result.get("main_claim", "")
+    llm_key_points = llm_result.get("key_points") or []
 
     if not llm_available:
         llm_status = "skipped"
@@ -357,12 +361,31 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         llm_detail = llm_reason or "Claim appears plausible"
         score_real += 1
 
+    # Rich detail string for UI
+    rich_parts = []
+    if llm_summary:
+        rich_parts.append(f"Summary: {llm_summary}")
+    if llm_main_claim:
+        rich_parts.append(f"Main claim: {llm_main_claim}")
+    if llm_key_points:
+        rich_parts.append("Key points: " + "; ".join(llm_key_points[:4]))
+    if llm_reason:
+        rich_parts.append(f"Reason: {llm_reason}")
+    if llm_confidence is not None:
+        rich_parts.append(f"Confidence: {llm_confidence}%")
+    rich_detail = " | ".join(rich_parts) if rich_parts else llm_detail
+
     layers["llm_reasoning"] = {
         "name": "AI Reasoning",
         "status": llm_status,
-        "detail": llm_detail,
+        "detail": rich_detail or llm_detail,
         "verdict": llm_verdict,
         "provider": llm_provider,
+        "confidence": llm_confidence,
+        "summary": llm_summary,
+        "main_claim": llm_main_claim,
+        "key_points": llm_key_points,
+        "reason": llm_reason,
     }
 
     # ---- LAYER 5 (use English translation for ML if needed) ----
