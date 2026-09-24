@@ -18,6 +18,11 @@ import tempfile
 
 import requests
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 HAS_TESSERACT = False
 HAS_PIL = False
 HAS_EASYOCR = False
