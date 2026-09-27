@@ -63,7 +63,7 @@ ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
 
 PROMPT_TEMPLATE = """You are an expert news analyst working inside a fake-news detection system.
 
-Analyse the given news headline COMPLETELY and carefully.
+Analyse the given news text COMPLETELY and carefully. It may be a full headline, a short 2-5 word phrase, or a paragraph — always try to give a clear PLAUSIBLE or IMPLAUSIBLE verdict.
 
 Your tasks:
 1. Understand what the headline is actually saying (full meaning).
@@ -322,7 +322,8 @@ def analyze_with_llm(headline: str) -> dict:
     """
     headline = _clean_headline(headline)
 
-    if not headline or len(headline) < 10:
+    # Accept even 2–3 word phrases (user may type short claims)
+    if not headline or len(headline) < 3:
         return {
             "available": False,
             "verdict": None,
@@ -330,7 +331,7 @@ def analyze_with_llm(headline: str) -> dict:
             "summary": "",
             "main_claim": "",
             "key_points": [],
-            "reason": "Headline too short for analysis",
+            "reason": "Text too short for analysis",
             "provider": None,
         }
 

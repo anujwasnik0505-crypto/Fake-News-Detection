@@ -103,6 +103,24 @@ from src.chatbot import (
     chat_reply
 )
 
+try:
+    from src.text_utils import prepare_input, extract_primary_claim
+except ImportError:
+    def prepare_input(raw):
+        raw = (raw or "").strip()
+        return {
+            "ok": bool(raw),
+            "raw": raw,
+            "headline": raw[:300],
+            "full_text": raw[:4000],
+            "input_kind": "headline",
+            "word_count": len(raw.split()),
+            "error": None if raw else "Empty input",
+        }
+    def extract_primary_claim(text, max_chars=280):
+        return (text or "")[:max_chars]
+
+
 # Phase 2 + 3 modules (optional — degrade gracefully)
 try:
     from src.article_fetcher import fetch_article, is_url
@@ -359,7 +377,13 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     else:
         llm_status = "plausible"
         llm_detail = llm_reason or "Claim appears plausible"
-        score_real += 1
+        # Higher weight when LLM is confident → fewer "Uncertain" results
+        conf = llm_result.get("confidence")
+        try:
+            conf = int(conf) if conf is not None else 50
+        except (TypeError, ValueError):
+            conf = 50
+        score_real += 2 if conf >= 70 else 1
 
     # Rich detail string for UI
     rich_parts = []
@@ -418,7 +442,9 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         "ml_input_was_translated": bool(translation_info and translation_info.get("ok") and lang != "en"),
     }
 
-    # ---- Final 3-way verdict ----
+    # ---- Final verdict (decisive: prefer REAL/FAKE over Uncertain) ----
+    # Goal: even short phrases and paragraphs should get a clear REAL or FAKE
+    # when any layer has a usable signal. Uncertain only when truly no signal.
     if score_real >= 3 and score_fake == 0:
         final_verdict, final_label, confidence_label = "Likely Real", "REAL", "High"
     elif score_fake >= 3 and score_real == 0:
@@ -427,6 +453,15 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Medium"
     elif score_fake > score_real and score_fake >= 2:
         final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Medium"
+    elif score_real > score_fake:
+        final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Low"
+    elif score_fake > score_real:
+        final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Low"
+    elif prediction == "REAL":
+        # Pure ML fallback — still give a clear label
+        final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Low"
+    elif prediction == "FAKE":
+        final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Low"
     else:
         final_verdict, final_label, confidence_label = "Uncertain", "UNVERIFIED", "Low"
 
@@ -506,7 +541,7 @@ def api_check():
     ).strip()
 
     if not raw:
-        return jsonify({"error": "Headline or URL is empty"}), 400
+        return jsonify({"error": "Please enter at least 2 words, a headline, or a paragraph"}), 400
 
     try:
         # Phase-2: if input looks like a URL → fetch full article
@@ -550,8 +585,25 @@ def api_check():
             result = run_verification_pipeline(headline, extra=extra)
             return jsonify(result)
 
-        # Normal headline path
-        result = run_verification_pipeline(raw, extra={"input_type": "headline"})
+        # Normal text path — supports 2-3 words, headlines, and full paragraphs
+        prepared = prepare_input(raw)
+        if not prepared.get("ok"):
+            return jsonify({
+                "error": prepared.get("error") or "Input too short",
+                "hint": "Enter at least 2 words (e.g. 'Modi wins election') or a full paragraph.",
+            }), 400
+
+        extra = {
+            "input_type": prepared["input_kind"],
+            "word_count": prepared["word_count"],
+            "full_text_preview": prepared["full_text"][:400],
+        }
+        # Use extracted headline for search/ML; full text available in extra for LLM if needed
+        result = run_verification_pipeline(prepared["headline"], extra=extra)
+        # If user pasted a paragraph, keep original text visible
+        if prepared["input_kind"] == "paragraph":
+            result["original_text"] = prepared["raw"][:1500]
+            result["extracted_claim"] = prepared["headline"]
         return jsonify(result)
 
     except Exception as e:
