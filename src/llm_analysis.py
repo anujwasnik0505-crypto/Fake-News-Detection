@@ -1,9 +1,8 @@
 """
-Multi-provider LLM reasoning layer for Fake News Detection.
+AI Reasoning layer: Google/News search first, then ChatGPT-style REAL/FAKE analysis.
 
-ChatGPT-style detailed analysis + clear PLAUSIBLE / IMPLAUSIBLE for the pipeline.
-
-Provider priority: Gemini → Groq → Mistral → OpenRouter → Cohere → Claude
+Uses free Google News RSS (no extra key). Snippets go into the LLM prompt
+so the answer is grounded in search results, not only model memory.
 """
 
 from __future__ import annotations
@@ -11,6 +10,8 @@ from __future__ import annotations
 import os
 import json
 import re
+from urllib.parse import quote
+
 import requests
 
 try:
@@ -19,6 +20,11 @@ try:
 except ImportError:
     pass
 
+try:
+    import feedparser
+    HAS_FEEDPARSER = True
+except ImportError:
+    HAS_FEEDPARSER = False
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
@@ -44,42 +50,95 @@ COHERE_MODEL = "command-r-plus"
 ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
 
 
-PROMPT_TEMPLATE = """You are a helpful news analyst (like ChatGPT) inside a fake-news detection app.
+def _clean_headline(headline: str) -> str:
+    h = (headline or "").strip()
+    h = re.sub(r"^\[(?:tesseract|gemini-vision|easyocr|gemini)\]\s*", "", h, flags=re.I)
+    h = re.sub(r"\s+", " ", h).strip()
+    return h
 
-The user gave this text (it may be 2–3 words, a headline, or a full paragraph):
+
+def search_web_for_claim(query: str, limit: int = 8) -> list:
+    """
+    Free web/news search via Google News RSS (ChatGPT-like grounding).
+    Returns list of {title, source, link}.
+    """
+    query = _clean_headline(query)
+    if not query or not HAS_FEEDPARSER:
+        return []
+
+    results = []
+    try:
+        url = (
+            f"https://news.google.com/rss/search?q={quote(query)}"
+            f"&hl=en-IN&gl=IN&ceid=IN:en"
+        )
+        feed = feedparser.parse(url)
+        for entry in feed.entries[:limit]:
+            title = entry.get("title") or ""
+            source = ""
+            if hasattr(entry, "source") and getattr(entry.source, "title", None):
+                source = entry.source.title
+            if not source and " - " in title:
+                parts = title.rsplit(" - ", 1)
+                if len(parts) == 2 and len(parts[1]) < 50:
+                    title, source = parts[0].strip(), parts[1].strip()
+            link = entry.get("link") or ""
+            if title:
+                results.append({
+                    "title": title.strip(),
+                    "source": source.strip() or "News",
+                    "link": link,
+                })
+    except Exception:
+        return results
+    return results
+
+
+def _format_search_block(results: list) -> str:
+    if not results:
+        return (
+            "No relevant recent news results were found for this claim. "
+            "Treat as unverified unless it is a well-known historical fact."
+        )
+    lines = []
+    for i, r in enumerate(results[:8], 1):
+        lines.append(f"{i}. [{r.get('source', 'News')}] {r.get('title', '')}")
+    return "\n".join(lines)
+
+
+PROMPT_TEMPLATE = """You are a helpful news analyst (like ChatGPT with web search).
+
+User claim:
 "{headline}"
 
-Write a clear, natural, ChatGPT-style analysis in simple language (English is fine; you may use simple Hindi words if the input is Hindi).
+Live search results from Google News (use these as evidence):
+{search_block}
 
-You MUST:
-1. Explain what the claim/text is saying.
-2. Say whether it is likely REAL-world plausible or not.
-3. Cover historical facts correctly:
-   - Widely known true history (e.g. "Mahatma Gandhi died", "India got independence in 1947") → treat as PLAUSIBLE / real fact.
-   - Do NOT mark real history as fake just because it is not in today's news.
-4. For normal politics, trade, science, sports news → usually PLAUSIBLE.
-5. Only mark IMPLAUSIBLE for absurd / impossible / clearly fabricated-sounding claims.
-6. Give a confidence from 0 to 100.
-7. End with a short plain-language verdict line.
+Write a clear ChatGPT-style analysis AND a machine verdict.
 
-Also fill the JSON fields exactly (machine-readable).
+Rules:
+1. Prefer the search results over pure guesses.
+2. If reputable outlets report the same event → lean REAL / PLAUSIBLE.
+3. If search shows debunks, "false", "rumour", "no evidence", or nothing supporting a breaking claim → lean FAKE / IMPLAUSIBLE or low confidence.
+4. Known historical facts (e.g. Mahatma Gandhi died in 1948) → REAL even if not in today's feed.
+5. Short political rumours with zero supporting news (e.g. "modi resigned" with no articles) → do NOT call REAL; mark IMPLAUSIBLE or uncertain tone in detailed_answer and verdict IMPLAUSIBLE if clearly unsupported rumour.
+6. Be honest when evidence is weak.
 
-Respond with ONLY valid JSON in this exact shape (no markdown fences):
+Respond ONLY with valid JSON (no markdown):
 
 {{
   "verdict": "PLAUSIBLE",
-  "confidence": 85,
-  "summary": "One or two sentences: what is this claim about?",
+  "confidence": 75,
+  "summary": "Brief what the claim is",
   "main_claim": "Core claim in simple words",
-  "key_points": ["point 1", "point 2", "point 3"],
-  "reason": "2-4 sentences of careful reasoning",
-  "detailed_answer": "Write 1-3 short paragraphs here like ChatGPT would: friendly, clear, explain context, why real or suspicious, and any caveat (e.g. old historical fact vs breaking news). This is what the user will read."
+  "key_points": ["point1", "point2"],
+  "reason": "2-4 sentences grounded in search results",
+  "detailed_answer": "1-3 short paragraphs like ChatGPT: what you found on search, whether it looks real or fake/rumour, and advice to check trusted sources. Simple language."
 }}
 
-Rules for verdict:
-- PLAUSIBLE = could be true / is a known fact / normal news topic
-- IMPLAUSIBLE = absurd, impossible, or classic fake-news style fantasy
-- When unsure but not absurd → PLAUSIBLE
+verdict must be exactly PLAUSIBLE or IMPLAUSIBLE.
+- PLAUSIBLE = supported by search or known true fact
+- IMPLAUSIBLE = unsupported rumour, debunked, or absurd
 """
 
 
@@ -91,29 +150,22 @@ def _extract_json(text: str) -> dict:
     text = re.sub(r"\s*```$", "", text)
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
-        raise ValueError(f"No JSON object found: {text[:250]}")
+        raise ValueError(f"No JSON: {text[:250]}")
     parsed = json.loads(match.group(0))
     verdict = str(parsed.get("verdict", "")).upper().strip()
     if verdict not in {"PLAUSIBLE", "IMPLAUSIBLE"}:
         raise ValueError(f"Invalid verdict: {verdict}")
-
-    confidence = parsed.get("confidence", 70)
     try:
-        confidence = int(float(confidence))
+        confidence = int(float(parsed.get("confidence", 70)))
         confidence = max(0, min(100, confidence))
     except (TypeError, ValueError):
         confidence = 70
-
     key_points = parsed.get("key_points") or []
     if not isinstance(key_points, list):
         key_points = [str(key_points)]
     key_points = [str(p).strip() for p in key_points if str(p).strip()][:6]
-
     detailed = str(parsed.get("detailed_answer") or parsed.get("reason") or "").strip()
-    reason = str(parsed.get("reason") or "").strip()
-    if not reason and detailed:
-        reason = detailed[:400]
-
+    reason = str(parsed.get("reason") or "").strip() or detailed[:400]
     return {
         "verdict": verdict,
         "confidence": confidence,
@@ -125,43 +177,35 @@ def _extract_json(text: str) -> dict:
     }
 
 
-def _clean_headline(headline: str) -> str:
-    h = (headline or "").strip()
-    h = re.sub(r"^\[(?:tesseract|gemini-vision|easyocr|gemini)\]\s*", "", h, flags=re.I)
-    h = re.sub(r"\s+", " ", h).strip()
-    return h
+def _prompt(headline: str, search_block: str) -> str:
+    return PROMPT_TEMPLATE.format(headline=headline, search_block=search_block)
 
 
-def _analyze_with_gemini(headline: str) -> dict:
+def _analyze_with_gemini(headline: str, search_block: str) -> dict:
     resp = requests.post(
         GEMINI_URL,
         params={"key": GEMINI_API_KEY},
         headers={"Content-Type": "application/json"},
         json={
-            "contents": [{"parts": [{"text": PROMPT_TEMPLATE.format(headline=headline)}]}],
+            "contents": [{"parts": [{"text": _prompt(headline, search_block)}]}],
             "generationConfig": {
-                "temperature": 0.25,
+                "temperature": 0.2,
                 "responseMimeType": "application/json",
-                "maxOutputTokens": 900,
+                "maxOutputTokens": 1000,
             },
         },
-        timeout=35,
+        timeout=40,
     )
     resp.raise_for_status()
     data = resp.json()
     text = data["candidates"][0]["content"]["parts"][0]["text"]
-    parsed = _extract_json(text)
-    return {**parsed, "available": True, "provider": "gemini"}
+    return {**_extract_json(text), "available": True, "provider": "gemini"}
 
 
-def _openai_style_request(url, api_key, model, headline, provider, extra_headers=None):
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+def _openai_style(url, api_key, model, headline, search_block, provider, extra_headers=None):
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     if extra_headers:
         headers.update(extra_headers)
-
     resp = requests.post(
         url,
         headers=headers,
@@ -171,121 +215,31 @@ def _openai_style_request(url, api_key, model, headline, provider, extra_headers
                 {
                     "role": "system",
                     "content": (
-                        "You are a helpful news analyst like ChatGPT. "
-                        "Give a clear detailed_answer for humans, and valid JSON fields. "
-                        "Known historical facts (e.g. Gandhi died in 1948) are PLAUSIBLE. "
-                        "Only mark IMPLAUSIBLE for absurd claims. Return only valid JSON."
+                        "You are a news analyst with search results. "
+                        "Ground your answer in the provided search snippets. "
+                        "Unsupported political rumours are IMPLAUSIBLE. "
+                        "Return only valid JSON."
                     ),
                 },
-                {
-                    "role": "user",
-                    "content": PROMPT_TEMPLATE.format(headline=headline),
-                },
+                {"role": "user", "content": _prompt(headline, search_block)},
             ],
-            "temperature": 0.25,
-            "max_tokens": 900,
+            "temperature": 0.2,
+            "max_tokens": 1000,
         },
-        timeout=35,
+        timeout=40,
     )
     resp.raise_for_status()
     data = resp.json()
     text = data["choices"][0]["message"]["content"]
-    parsed = _extract_json(text)
-    return {**parsed, "available": True, "provider": provider}
-
-
-def _analyze_with_groq(headline):
-    return _openai_style_request(GROQ_URL, GROQ_API_KEY, GROQ_MODEL, headline, "groq")
-
-
-def _analyze_with_mistral(headline):
-    return _openai_style_request(MISTRAL_URL, MISTRAL_API_KEY, MISTRAL_MODEL, headline, "mistral")
-
-
-def _analyze_with_openrouter(headline):
-    return _openai_style_request(
-        OPENROUTER_URL,
-        OPENROUTER_API_KEY,
-        OPENROUTER_MODEL,
-        headline,
-        "openrouter",
-        extra_headers={
-            "HTTP-Referer": "https://github.com/anujwasnik0505-crypto/Fake-News-Detection",
-            "X-Title": "Fake News Detection",
-        },
-    )
-
-
-def _analyze_with_cohere(headline):
-    resp = requests.post(
-        COHERE_URL,
-        headers={
-            "Authorization": f"Bearer {COHERE_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": COHERE_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a helpful news analyst like ChatGPT. Return only valid JSON.",
-                },
-                {
-                    "role": "user",
-                    "content": PROMPT_TEMPLATE.format(headline=headline),
-                },
-            ],
-            "temperature": 0.25,
-            "max_tokens": 900,
-        },
-        timeout=35,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    text = data["message"]["content"][0]["text"]
-    parsed = _extract_json(text)
-    return {**parsed, "available": True, "provider": "cohere"}
-
-
-def _analyze_with_claude(headline):
-    resp = requests.post(
-        ANTHROPIC_URL,
-        headers={
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": ANTHROPIC_MODEL,
-            "max_tokens": 900,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": PROMPT_TEMPLATE.format(headline=headline),
-                }
-            ],
-        },
-        timeout=35,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    text = data["content"][0]["text"]
-    parsed = _extract_json(text)
-    return {**parsed, "available": True, "provider": "claude"}
+    return {**_extract_json(text), "available": True, "provider": provider}
 
 
 def analyze_with_llm(headline: str) -> dict:
     """
-    ChatGPT-style analysis + pipeline fields.
-
-    Returns:
-    {
-        available, verdict, confidence, summary, main_claim,
-        key_points, reason, detailed_answer, provider
-    }
+    1) Search Google News
+    2) LLM analyses claim + results (ChatGPT-style)
     """
     headline = _clean_headline(headline)
-
     if not headline or len(headline) < 3:
         return {
             "available": False,
@@ -294,33 +248,39 @@ def analyze_with_llm(headline: str) -> dict:
             "summary": "",
             "main_claim": "",
             "key_points": [],
-            "reason": "Text too short for analysis",
+            "reason": "Text too short",
             "detailed_answer": "",
             "provider": None,
+            "search_results": [],
         }
 
+    search_results = search_web_for_claim(headline)
+    search_block = _format_search_block(search_results)
+
     providers = [
-        ("gemini", GEMINI_API_KEY, _analyze_with_gemini),
-        ("groq", GROQ_API_KEY, _analyze_with_groq),
-        ("mistral", MISTRAL_API_KEY, _analyze_with_mistral),
-        ("openrouter", OPENROUTER_API_KEY, _analyze_with_openrouter),
-        ("cohere", COHERE_API_KEY, _analyze_with_cohere),
-        ("claude", ANTHROPIC_API_KEY, _analyze_with_claude),
+        ("gemini", GEMINI_API_KEY, lambda h: _analyze_with_gemini(h, search_block)),
+        ("groq", GROQ_API_KEY, lambda h: _openai_style(GROQ_URL, GROQ_API_KEY, GROQ_MODEL, h, search_block, "groq")),
+        ("mistral", MISTRAL_API_KEY, lambda h: _openai_style(MISTRAL_URL, MISTRAL_API_KEY, MISTRAL_MODEL, h, search_block, "mistral")),
+        ("openrouter", OPENROUTER_API_KEY, lambda h: _openai_style(
+            OPENROUTER_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL, h, search_block, "openrouter",
+            {"HTTP-Referer": "https://github.com/anujwasnik0505-crypto/Fake-News-Detection", "X-Title": "Fake News Detection"},
+        )),
     ]
 
     configured = False
     errors = []
-
-    for name, api_key, analyzer in providers:
-        if not api_key:
+    for name, key, fn in providers:
+        if not key:
             continue
         configured = True
         try:
-            result = analyzer(headline)
+            result = fn(headline)
             if result.get("verdict") in {"PLAUSIBLE", "IMPLAUSIBLE"}:
+                result["search_results"] = search_results
+                result["search_count"] = len(search_results)
                 return result
         except Exception as e:
-            errors.append(f"{name}: {str(e)[:120]}")
+            errors.append(f"{name}: {str(e)[:100]}")
 
     if not configured:
         return {
@@ -330,9 +290,10 @@ def analyze_with_llm(headline: str) -> dict:
             "summary": "",
             "main_claim": "",
             "key_points": [],
-            "reason": "No LLM API key configured. Set GEMINI_API_KEY (free).",
+            "reason": "No LLM API key. Set GEMINI_API_KEY.",
             "detailed_answer": "",
             "provider": None,
+            "search_results": search_results,
         }
 
     return {
@@ -342,7 +303,8 @@ def analyze_with_llm(headline: str) -> dict:
         "summary": "",
         "main_claim": "",
         "key_points": [],
-        "reason": "All LLM providers failed. " + " | ".join(errors),
+        "reason": "LLM failed. " + " | ".join(errors),
         "detailed_answer": "",
         "provider": None,
+        "search_results": search_results,
     }

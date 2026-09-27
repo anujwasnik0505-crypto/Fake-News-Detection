@@ -368,23 +368,31 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     elif llm_verdict == "IMPLAUSIBLE":
         llm_status = "flagged"
         llm_detail = llm_reason
-        score_fake += 2
+        # Priority 2: AI search-based reasoning — strong fake signal
+        score_fake += 3
         evidence.append({
             "label": f"AI Reasoning ({llm_provider})",
-            "detail": llm_reason,
+            "detail": (llm_detailed or llm_reason)[:300],
             "url": None,
             "type": "llm",
         })
     else:
         llm_status = "plausible"
         llm_detail = llm_reason or "Claim appears plausible"
-        # Higher weight when LLM is confident → fewer "Uncertain" results
+        # Priority 2: search-supported plausible — medium real (below trusted source)
         conf = llm_result.get("confidence")
         try:
             conf = int(conf) if conf is not None else 50
         except (TypeError, ValueError):
             conf = 50
-        score_real += 2 if conf >= 70 else 1
+        score_real += 2 if conf >= 60 else 1
+        if llm_detailed:
+            evidence.append({
+                "label": f"AI Reasoning ({llm_provider})",
+                "detail": llm_detailed[:300],
+                "url": None,
+                "type": "llm",
+            })
 
     # Rich detail string for UI
     rich_parts = []
@@ -412,6 +420,8 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         "key_points": llm_key_points,
         "reason": llm_reason,
         "detailed_answer": llm_detailed,
+        "search_results": llm_result.get("search_results") or [],
+        "search_count": llm_result.get("search_count") or 0,
     }
 
     # ---- LAYER 5 (use English translation for ML if needed) ----
@@ -427,10 +437,11 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         except (TypeError, ValueError):
             conf_val = None
 
+    # Priority 4 (equal with plausibility/red-flag): ML/DL model
     if prediction == "REAL":
-        score_real += 1 if (conf_val is None or conf_val < 0.7) else 2
+        score_real += 1 if (conf_val is None or conf_val < 0.55) else 2
     elif prediction == "FAKE":
-        score_fake += 1 if (conf_val is None or conf_val < 0.7) else 2
+        score_fake += 1 if (conf_val is None or conf_val < 0.55) else 2
 
     layers["ml_model"] = {
         "name": "ML Prediction",
@@ -444,37 +455,50 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         "ml_input_was_translated": bool(translation_info and translation_info.get("ok") and lang != "en"),
     }
 
-    # ---- Final verdict (decisive: prefer REAL/FAKE over Uncertain) ----
-    # Goal: even short phrases and paragraphs should get a clear REAL or FAKE
-    # when any layer has a usable signal. Uncertain only when truly no signal.
-    if score_real >= 3 and score_fake == 0:
+    # ---- Final verdict (user priority) ----
+    # 1) Trusted Source (live news)
+    # 2) AI Reasoning (Google search + LLM)
+    # 3) Fact-check database
+    # 4) Plausibility red-flag  ==  ML/DL model (equal)
+    if is_verified:
         final_verdict, final_label, confidence_label = "Likely Real", "REAL", "High"
-    elif score_fake >= 3 and score_real == 0:
+    elif llm_status == "flagged":
         final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "High"
-    elif score_real > score_fake and score_real >= 2:
+    elif llm_status == "plausible" and (llm_result.get("confidence") or 0) >= 70 and score_real > score_fake:
         final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Medium"
+    elif fact_status == "flagged_fake":
+        final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "High"
+    elif fact_status == "confirmed_real":
+        final_verdict, final_label, confidence_label = "Likely Real", "REAL", "High"
+    elif flagged and prediction == "FAKE":
+        final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Medium"
+    elif flagged and score_fake >= score_real:
+        final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Medium"
     elif score_fake > score_real and score_fake >= 2:
         final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Medium"
-    elif score_real > score_fake:
-        final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Low"
+    elif score_real > score_fake and score_real >= 3:
+        final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Medium"
     elif score_fake > score_real:
         final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Low"
-    elif prediction == "REAL":
-        # Pure ML fallback — still give a clear label
+    elif score_real > score_fake:
         final_verdict, final_label, confidence_label = "Likely Real", "REAL", "Low"
     elif prediction == "FAKE":
         final_verdict, final_label, confidence_label = "Suspicious", "FAKE", "Low"
+    elif prediction == "REAL":
+        final_verdict, final_label, confidence_label = "Uncertain", "UNVERIFIED", "Low"
     else:
         final_verdict, final_label, confidence_label = "Uncertain", "UNVERIFIED", "Low"
 
     if is_verified:
         mode = "verified"
+    elif llm_status == "flagged":
+        mode = "llm_search"
+    elif llm_status == "plausible" and (llm_result.get("search_count") or 0) > 0:
+        mode = "llm_search"
     elif fact_status in ("flagged_fake", "confirmed_real"):
         mode = "fact_checked"
     elif flagged:
         mode = "flagged"
-    elif llm_status == "flagged":
-        mode = "llm_flagged"
     else:
         mode = "unverified"
 
@@ -482,7 +506,7 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     if is_verified:
         reason_parts.append("Matched trusted news sources")
     if fact_status == "flagged_fake":
-        reason_parts.append("Professional fact-checkers rated it false/misleading")
+        reason_parts.append("Professional fact-checkers rated this claim FALSE / misleading — treating as FAKE")
     elif fact_status == "confirmed_real":
         reason_parts.append("Professional fact-checkers rated it true")
     if flagged:
@@ -491,7 +515,8 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         reason_parts.append(
             llm_detailed[:400] if llm_detailed else "AI reasoning found the claim implausible"
         )
-    elif llm_status == "plausible" and llm_detailed:
+    elif llm_status == "plausible" and llm_detailed and fact_status != "flagged_fake":
+        # Don't let a long "plausible" essay override a fact-check FALSE message
         reason_parts.append(llm_detailed[:400])
     if not reason_parts:
         reason_parts.append(
