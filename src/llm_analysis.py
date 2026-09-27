@@ -1,15 +1,12 @@
 """
 Multi-provider LLM reasoning layer for Fake News Detection.
 
-Now returns FULL analysis of the headline:
-- What the claim is saying
-- Key points
-- Detailed plausibility reasoning
-- Confidence
-- Clear PLAUSIBLE / IMPLAUSIBLE verdict
+ChatGPT-style detailed analysis + clear PLAUSIBLE / IMPLAUSIBLE for the pipeline.
 
 Provider priority: Gemini → Groq → Mistral → OpenRouter → Cohere → Claude
 """
+
+from __future__ import annotations
 
 import os
 import json
@@ -23,10 +20,6 @@ except ImportError:
     pass
 
 
-# ============================================================
-# API KEYS
-# ============================================================
-
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "").strip()
@@ -34,16 +27,10 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 COHERE_API_KEY = os.environ.get("COHERE_API_KEY", "").strip()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
-
-# ============================================================
-# ENDPOINTS & MODELS
-# ============================================================
-
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/"
     "v1beta/models/gemini-2.0-flash:generateContent"
 )
-
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -57,73 +44,59 @@ COHERE_MODEL = "command-r-plus"
 ANTHROPIC_MODEL = "claude-3-5-sonnet-20241022"
 
 
-# ============================================================
-# FULL ANALYSIS PROMPT
-# ============================================================
+PROMPT_TEMPLATE = """You are a helpful news analyst (like ChatGPT) inside a fake-news detection app.
 
-PROMPT_TEMPLATE = """You are an expert news analyst working inside a fake-news detection system.
+The user gave this text (it may be 2–3 words, a headline, or a full paragraph):
+"{headline}"
 
-Analyse the given news text COMPLETELY and carefully. It may be a full headline, a short 2-5 word phrase, or a paragraph — always try to give a clear PLAUSIBLE or IMPLAUSIBLE verdict.
+Write a clear, natural, ChatGPT-style analysis in simple language (English is fine; you may use simple Hindi words if the input is Hindi).
 
-Your tasks:
-1. Understand what the headline is actually saying (full meaning).
-2. Extract the main claim / topic in simple words.
-3. List 2-4 key points present in the headline.
-4. Decide if the claim is PLAUSIBLE or IMPLAUSIBLE in the real world.
-5. Give a clear, detailed reason for your decision.
-6. Give a confidence score (0 to 100).
+You MUST:
+1. Explain what the claim/text is saying.
+2. Say whether it is likely REAL-world plausible or not.
+3. Cover historical facts correctly:
+   - Widely known true history (e.g. "Mahatma Gandhi died", "India got independence in 1947") → treat as PLAUSIBLE / real fact.
+   - Do NOT mark real history as fake just because it is not in today's news.
+4. For normal politics, trade, science, sports news → usually PLAUSIBLE.
+5. Only mark IMPLAUSIBLE for absurd / impossible / clearly fabricated-sounding claims.
+6. Give a confidence from 0 to 100.
+7. End with a short plain-language verdict line.
 
-STRICT RULES for verdict:
-- PLAUSIBLE = the topic could realistically happen (politics, trade, tariffs, economy, diplomacy, science, crime, sports, etc.).
-- IMPLAUSIBLE = only if the claim is physically impossible, supernatural, or extremely absurd.
-- Normal news about tariffs, trade deals, India-US relations, questions like "Can X reduce Y?" → almost always PLAUSIBLE.
-- Do NOT mark IMPLAUSIBLE just because the news is dramatic, controversial, or uses high numbers (e.g. 100% tariff).
-- When in doubt → choose PLAUSIBLE.
-- Be accurate and specific to THIS headline.
+Also fill the JSON fields exactly (machine-readable).
 
-Respond ONLY with valid JSON in exactly this format (no markdown, no extra text):
+Respond with ONLY valid JSON in this exact shape (no markdown fences):
 
 {{
   "verdict": "PLAUSIBLE",
   "confidence": 85,
-  "summary": "One or two sentences explaining what the headline is talking about.",
-  "main_claim": "The core factual claim in simple words.",
-  "key_points": [
-    "Point 1",
-    "Point 2",
-    "Point 3"
-  ],
-  "reason": "Detailed 2-4 sentence explanation of why this is plausible or implausible, referring to real-world knowledge."
+  "summary": "One or two sentences: what is this claim about?",
+  "main_claim": "Core claim in simple words",
+  "key_points": ["point 1", "point 2", "point 3"],
+  "reason": "2-4 sentences of careful reasoning",
+  "detailed_answer": "Write 1-3 short paragraphs here like ChatGPT would: friendly, clear, explain context, why real or suspicious, and any caveat (e.g. old historical fact vs breaking news). This is what the user will read."
 }}
 
-Headline:
-"{headline}"
+Rules for verdict:
+- PLAUSIBLE = could be true / is a known fact / normal news topic
+- IMPLAUSIBLE = absurd, impossible, or classic fake-news style fantasy
+- When unsure but not absurd → PLAUSIBLE
 """
 
-
-# ============================================================
-# JSON PARSER
-# ============================================================
 
 def _extract_json(text: str) -> dict:
     if not text:
         raise ValueError("Empty LLM response")
-
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
-
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise ValueError(f"No JSON object found: {text[:250]}")
-
     parsed = json.loads(match.group(0))
     verdict = str(parsed.get("verdict", "")).upper().strip()
-
     if verdict not in {"PLAUSIBLE", "IMPLAUSIBLE"}:
         raise ValueError(f"Invalid verdict: {verdict}")
 
-    # Normalize fields
     confidence = parsed.get("confidence", 70)
     try:
         confidence = int(float(confidence))
@@ -136,13 +109,19 @@ def _extract_json(text: str) -> dict:
         key_points = [str(key_points)]
     key_points = [str(p).strip() for p in key_points if str(p).strip()][:6]
 
+    detailed = str(parsed.get("detailed_answer") or parsed.get("reason") or "").strip()
+    reason = str(parsed.get("reason") or "").strip()
+    if not reason and detailed:
+        reason = detailed[:400]
+
     return {
         "verdict": verdict,
         "confidence": confidence,
         "summary": str(parsed.get("summary", "")).strip(),
         "main_claim": str(parsed.get("main_claim", "")).strip(),
         "key_points": key_points,
-        "reason": str(parsed.get("reason", "")).strip(),
+        "reason": reason,
+        "detailed_answer": detailed,
     }
 
 
@@ -153,10 +132,6 @@ def _clean_headline(headline: str) -> str:
     return h
 
 
-# ============================================================
-# PROVIDERS
-# ============================================================
-
 def _analyze_with_gemini(headline: str) -> dict:
     resp = requests.post(
         GEMINI_URL,
@@ -165,12 +140,12 @@ def _analyze_with_gemini(headline: str) -> dict:
         json={
             "contents": [{"parts": [{"text": PROMPT_TEMPLATE.format(headline=headline)}]}],
             "generationConfig": {
-                "temperature": 0.15,
+                "temperature": 0.25,
                 "responseMimeType": "application/json",
-                "maxOutputTokens": 600,
+                "maxOutputTokens": 900,
             },
         },
-        timeout=30,
+        timeout=35,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -196,11 +171,10 @@ def _openai_style_request(url, api_key, model, headline, provider, extra_headers
                 {
                     "role": "system",
                     "content": (
-                        "You are an expert news analyst. "
-                        "Give a full, accurate analysis of the headline. "
-                        "Mark IMPLAUSIBLE only for absurd/impossible claims. "
-                        "Normal political, trade, tariff, economic headlines are PLAUSIBLE. "
-                        "Return only valid JSON."
+                        "You are a helpful news analyst like ChatGPT. "
+                        "Give a clear detailed_answer for humans, and valid JSON fields. "
+                        "Known historical facts (e.g. Gandhi died in 1948) are PLAUSIBLE. "
+                        "Only mark IMPLAUSIBLE for absurd claims. Return only valid JSON."
                     ),
                 },
                 {
@@ -208,10 +182,10 @@ def _openai_style_request(url, api_key, model, headline, provider, extra_headers
                     "content": PROMPT_TEMPLATE.format(headline=headline),
                 },
             ],
-            "temperature": 0.15,
-            "max_tokens": 600,
+            "temperature": 0.25,
+            "max_tokens": 900,
         },
-        timeout=30,
+        timeout=35,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -254,17 +228,17 @@ def _analyze_with_cohere(headline):
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are an expert news analyst. Return only valid JSON with full analysis.",
+                    "content": "You are a helpful news analyst like ChatGPT. Return only valid JSON.",
                 },
                 {
                     "role": "user",
                     "content": PROMPT_TEMPLATE.format(headline=headline),
                 },
             ],
-            "temperature": 0.15,
-            "max_tokens": 600,
+            "temperature": 0.25,
+            "max_tokens": 900,
         },
-        timeout=30,
+        timeout=35,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -283,7 +257,7 @@ def _analyze_with_claude(headline):
         },
         json={
             "model": ANTHROPIC_MODEL,
-            "max_tokens": 600,
+            "max_tokens": 900,
             "messages": [
                 {
                     "role": "user",
@@ -291,7 +265,7 @@ def _analyze_with_claude(headline):
                 }
             ],
         },
-        timeout=30,
+        timeout=35,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -300,29 +274,18 @@ def _analyze_with_claude(headline):
     return {**parsed, "available": True, "provider": "claude"}
 
 
-# ============================================================
-# MAIN FUNCTION
-# ============================================================
-
 def analyze_with_llm(headline: str) -> dict:
     """
-    Full headline analysis.
+    ChatGPT-style analysis + pipeline fields.
 
     Returns:
     {
-        "available": bool,
-        "verdict": "PLAUSIBLE" | "IMPLAUSIBLE" | None,
-        "confidence": int (0-100),
-        "summary": str,
-        "main_claim": str,
-        "key_points": [str, ...],
-        "reason": str,          # detailed explanation
-        "provider": str | None
+        available, verdict, confidence, summary, main_claim,
+        key_points, reason, detailed_answer, provider
     }
     """
     headline = _clean_headline(headline)
 
-    # Accept even 2–3 word phrases (user may type short claims)
     if not headline or len(headline) < 3:
         return {
             "available": False,
@@ -332,6 +295,7 @@ def analyze_with_llm(headline: str) -> dict:
             "main_claim": "",
             "key_points": [],
             "reason": "Text too short for analysis",
+            "detailed_answer": "",
             "provider": None,
         }
 
@@ -367,6 +331,7 @@ def analyze_with_llm(headline: str) -> dict:
             "main_claim": "",
             "key_points": [],
             "reason": "No LLM API key configured. Set GEMINI_API_KEY (free).",
+            "detailed_answer": "",
             "provider": None,
         }
 
@@ -378,5 +343,6 @@ def analyze_with_llm(headline: str) -> dict:
         "main_claim": "",
         "key_points": [],
         "reason": "All LLM providers failed. " + " | ".join(errors),
+        "detailed_answer": "",
         "provider": None,
     }

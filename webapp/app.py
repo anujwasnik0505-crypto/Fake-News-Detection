@@ -360,6 +360,7 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     llm_summary = llm_result.get("summary", "")
     llm_main_claim = llm_result.get("main_claim", "")
     llm_key_points = llm_result.get("key_points") or []
+    llm_detailed = llm_result.get("detailed_answer") or llm_reason or ""
 
     if not llm_available:
         llm_status = "skipped"
@@ -410,6 +411,7 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
         "main_claim": llm_main_claim,
         "key_points": llm_key_points,
         "reason": llm_reason,
+        "detailed_answer": llm_detailed,
     }
 
     # ---- LAYER 5 (use English translation for ML if needed) ----
@@ -486,7 +488,11 @@ def run_verification_pipeline(headline: str, extra: dict = None) -> dict:
     if flagged:
         reason_parts.append("Contains common fake-news red-flag patterns")
     if llm_status == "flagged":
-        reason_parts.append("AI reasoning found the claim implausible")
+        reason_parts.append(
+            llm_detailed[:400] if llm_detailed else "AI reasoning found the claim implausible"
+        )
+    elif llm_status == "plausible" and llm_detailed:
+        reason_parts.append(llm_detailed[:400])
     if not reason_parts:
         reason_parts.append(
             f"Model prediction: {prediction}"
